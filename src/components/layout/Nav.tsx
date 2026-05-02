@@ -10,6 +10,8 @@ const links = [
   { label: 'Factions', href: '/factions' },
   { label: 'Dashboard', href: '/dashboard' },
   { label: 'Profile', href: '/profile' },
+  { label: 'Galaxy TV', href: '/galaxy-tv' },
+  { label: 'Messages', href: '/messages' },
 ]
 
 export default function Nav() {

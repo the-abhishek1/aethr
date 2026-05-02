@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifySessionToken } from './lib/auth-edge'
 
-const PROTECTED = ['/dashboard', '/profile', '/commons', '/forge', '/arena', '/the-deep', '/the-void', '/market', '/sanctum', '/archive']
+const PROTECTED = ['/dashboard', '/profile', '/commons', '/forge', '/arena', '/the-deep', '/the-void', '/messages', '/galaxy-tv', '/market', '/sanctum', '/archive']
 const AUTH_ROUTES = ['/signin', '/signup']
 
 export function proxy(request: NextRequest) {

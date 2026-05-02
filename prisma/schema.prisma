@@ -7,29 +7,33 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  username      String    @unique
+  id            String   @id @default(cuid())
+  email         String   @unique
+  username      String   @unique
   passwordHash  String
-  avatarEmoji   String    @default("⚗️")
+  avatarEmoji   String   @default("⚗️")
   bio           String?
-  joinedAt      DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  joinedAt      DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  personas       Persona[]
-  reputation     Reputation?
-  presence       Presence?
-  signals        Signal[]
-  transmissions  Transmission[]
-  roomMembers    RoomMember[]
-  factionMembers FactionMember[]
-  tipsGiven      Tip[]     @relation("TipsGiven")
-  tipsReceived   Tip[]     @relation("TipsReceived")
-  debatesCreated Debate[]  @relation("DebateCreator")
-  debateVotes    DebateVote[]
-  debateArguments DebateArgument[]
-  notifications  Notification[]
-  discoveries    Discovery[]
+  personas         Persona[]
+  reputation       Reputation?
+  presence         Presence?
+  signals          Signal[]
+  transmissions    Transmission[]
+  roomMembers      RoomMember[]
+  factionMembers   FactionMember[]
+  tipsGiven        Tip[]             @relation("TipsGiven")
+  tipsReceived     Tip[]             @relation("TipsReceived")
+  debatesCreated   Debate[]          @relation("DebateCreator")
+  debateVotes      DebateVote[]
+  debateArguments  DebateArgument[]
+  notifications    Notification[]
+  discoveries      Discovery[]
+  messagesSent     Message[]         @relation("MessagesSent")
+  messagesReceived Message[]         @relation("MessagesReceived")
+  mysteryExplorers MysteryExplorer[]
+  mysteryAttempts  MysteryAttempt[]
 
   @@map("users")
 }
@@ -186,17 +190,17 @@ model FactionMember {
 }
 
 model Debate {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   creatorId   String
   title       String
   description String?
-  status      String   @default("open") // open, active, closed
+  status      String    @default("open")
   endsAt      DateTime?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
-  creator    User             @relation("DebateCreator", fields: [creatorId], references: [id])
-  arguments  DebateArgument[]
-  votes      DebateVote[]
+  creator   User             @relation("DebateCreator", fields: [creatorId], references: [id])
+  arguments DebateArgument[]
+  votes     DebateVote[]
 
   @@map("debates")
 }
@@ -205,7 +209,7 @@ model DebateArgument {
   id        String   @id @default(cuid())
   debateId  String
   authorId  String
-  side      String   // "for" | "against"
+  side      String
   content   String
   createdAt DateTime @default(now())
 
@@ -219,7 +223,7 @@ model DebateVote {
   id       String @id @default(cuid())
   debateId String
   userId   String
-  side     String // "for" | "against"
+  side     String
 
   debate Debate @relation(fields: [debateId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id])
@@ -231,7 +235,7 @@ model DebateVote {
 model Notification {
   id        String   @id @default(cuid())
   userId    String
-  type      String   // tip_received, debate_reply, faction_joined, signal_reply, discovery_ripple
+  type      String
   title     String
   body      String
   link      String?
@@ -244,17 +248,88 @@ model Notification {
 }
 
 model Discovery {
-  id          String   @id @default(cuid())
-  authorId    String
-  title       String
-  content     String
-  worldId     String   @default("deep")
-  ripples     Int      @default(0)
-  firstFound  Boolean  @default(true)
-  tags        String[]
-  createdAt   DateTime @default(now())
+  id        String   @id @default(cuid())
+  authorId  String
+  title     String
+  content   String
+  worldId   String   @default("deep")
+  ripples   Int      @default(0)
+  tags      String[]
+  createdAt DateTime @default(now())
 
   author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
   @@map("discoveries")
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  fromUserId String
+  toUserId   String
+  content    String
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  fromUser User @relation("MessagesSent",     fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser   User @relation("MessagesReceived", fields: [toUserId],   references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+model Mystery {
+  id          String    @id @default(cuid())
+  title       String
+  description String
+  clues       String[]
+  answer      String
+  status      String    @default("active")
+  solvedBy    String?
+  solvedAt    DateTime?
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+
+  explorers MysteryExplorer[]
+  attempts  MysteryAttempt[]
+
+  @@map("mysteries")
+}
+
+model MysteryExplorer {
+  id        String   @id @default(cuid())
+  mysteryId String
+  userId    String
+  joinedAt  DateTime @default(now())
+
+  mystery Mystery @relation(fields: [mysteryId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId],    references: [id], onDelete: Cascade)
+
+  @@unique([mysteryId, userId])
+  @@map("mystery_explorers")
+}
+
+model MysteryAttempt {
+  id        String   @id @default(cuid())
+  mysteryId String
+  userId    String
+  answer    String
+  correct   Boolean
+  createdAt DateTime @default(now())
+
+  mystery Mystery @relation(fields: [mysteryId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId],    references: [id], onDelete: Cascade)
+
+  @@map("mystery_attempts")
+}
+
+model GalaxyEvent {
+  id          String   @id @default(cuid())
+  type        String
+  title       String
+  description String
+  worldId     String   @default("commons")
+  actorId     String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@map("galaxy_events")
 }
