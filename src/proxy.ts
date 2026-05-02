@@ -4,7 +4,7 @@ import { verifySessionToken } from './lib/auth-edge'
 const PROTECTED = ['/dashboard', '/profile', '/commons', '/forge', '/arena', '/the-deep', '/the-void', '/market', '/sanctum', '/archive']
 const AUTH_ROUTES = ['/signin', '/signup']
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const token = request.cookies.get('aethr_session')?.value
   const user = token ? verifySessionToken(token) : null

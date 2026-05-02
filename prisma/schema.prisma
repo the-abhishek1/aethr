@@ -23,8 +23,13 @@ model User {
   transmissions  Transmission[]
   roomMembers    RoomMember[]
   factionMembers FactionMember[]
-  tipsGiven      Tip[] @relation("TipsGiven")
-  tipsReceived   Tip[] @relation("TipsReceived")
+  tipsGiven      Tip[]     @relation("TipsGiven")
+  tipsReceived   Tip[]     @relation("TipsReceived")
+  debatesCreated Debate[]  @relation("DebateCreator")
+  debateVotes    DebateVote[]
+  debateArguments DebateArgument[]
+  notifications  Notification[]
+  discoveries    Discovery[]
 
   @@map("users")
 }
@@ -178,4 +183,78 @@ model FactionMember {
 
   @@unique([userId, factionId])
   @@map("faction_members")
+}
+
+model Debate {
+  id          String   @id @default(cuid())
+  creatorId   String
+  title       String
+  description String?
+  status      String   @default("open") // open, active, closed
+  endsAt      DateTime?
+  createdAt   DateTime @default(now())
+
+  creator    User             @relation("DebateCreator", fields: [creatorId], references: [id])
+  arguments  DebateArgument[]
+  votes      DebateVote[]
+
+  @@map("debates")
+}
+
+model DebateArgument {
+  id        String   @id @default(cuid())
+  debateId  String
+  authorId  String
+  side      String   // "for" | "against"
+  content   String
+  createdAt DateTime @default(now())
+
+  debate Debate @relation(fields: [debateId], references: [id], onDelete: Cascade)
+  author User   @relation(fields: [authorId], references: [id])
+
+  @@map("debate_arguments")
+}
+
+model DebateVote {
+  id       String @id @default(cuid())
+  debateId String
+  userId   String
+  side     String // "for" | "against"
+
+  debate Debate @relation(fields: [debateId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([debateId, userId])
+  @@map("debate_votes")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // tip_received, debate_reply, faction_joined, signal_reply, discovery_ripple
+  title     String
+  body      String
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model Discovery {
+  id          String   @id @default(cuid())
+  authorId    String
+  title       String
+  content     String
+  worldId     String   @default("deep")
+  ripples     Int      @default(0)
+  firstFound  Boolean  @default(true)
+  tags        String[]
+  createdAt   DateTime @default(now())
+
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@map("discoveries")
 }
