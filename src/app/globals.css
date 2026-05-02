@@ -1,0 +1,124 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Mono:wght@300;400&display=swap');
+@import "tailwindcss";
+
+:root {
+  --void: #04040a;
+  --deep: #080814;
+  --mid: #0e0e20;
+  --surface: #141428;
+  --surface-bright: #1c1c38;
+  --border: rgba(180,170,255,0.08);
+  --border-bright: rgba(180,170,255,0.18);
+  --border-hover: rgba(180,170,255,0.32);
+  --aether: #a89bff;
+  --aether-dim: rgba(168,155,255,0.12);
+  --gold: #d4b896;
+  --gold-dim: rgba(212,184,150,0.6);
+  --text: #e8e4f0;
+  --text-muted: rgba(232,228,240,0.45);
+  --text-dim: rgba(232,228,240,0.22);
+  --font-display: 'Cormorant Garamond', serif;
+  --font-mono: 'DM Mono', monospace;
+  --commons: #1D9E75;
+  --forge: #BA7517;
+  --arena: #D85A30;
+  --deep-color: #378ADD;
+  --void-color: #7F77DD;
+  --market: #639922;
+  --sanctum: #a89bff;
+  --archive: #D4537E;
+
+  /* Spacing scale */
+  --page-px: clamp(1rem, 5vw, 3rem);
+  --section-py: clamp(4rem, 8vw, 8rem);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--void);
+  color: var(--text);
+  font-family: var(--font-display);
+  font-weight: 300;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+main { flex: 1; position: relative; z-index: 10; }
+
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: var(--void); }
+::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 2px; }
+::selection { background: rgba(168,155,255,0.2); color: var(--aether); }
+
+/* Responsive grid utilities */
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); }
+.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); }
+.grid-2-1 { display: grid; grid-template-columns: 1fr 1fr; }
+
+@media (max-width: 1024px) {
+  .grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .grid-3 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 640px) {
+  .grid-4, .grid-3, .grid-2, .grid-2-1 { grid-template-columns: 1fr; }
+}
+
+/* Page wrapper */
+.page { padding: var(--section-py) var(--page-px); }
+.page-top { padding-top: calc(var(--section-py) + 4rem); padding-bottom: var(--section-py); padding-left: var(--page-px); padding-right: var(--page-px); }
+
+/* Reveal animation */
+.reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.8s ease, transform 0.8s ease; }
+.reveal.visible { opacity: 1; transform: translateY(0); }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes spinSlow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes drift {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+@keyframes pulse-soft {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+@keyframes scrollLine {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 0.8; }
+}
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 6px currentColor; }
+  50% { box-shadow: 0 0 14px currentColor; }
+}
+
+/* ── Responsive breakpoints ── */
+@media (max-width: 1024px) {
+  .grid-4 { grid-template-columns: repeat(2, 1fr) !important; }
+  .grid-3 { grid-template-columns: repeat(2, 1fr) !important; }
+  .col-2  { grid-template-columns: 1fr !important; }
+}
+@media (max-width: 768px) {
+  .grid-4  { grid-template-columns: 1fr 1fr !important; }
+  .grid-3  { grid-template-columns: 1fr !important; }
+  .col-2   { grid-template-columns: 1fr !important; }
+  .col-3   { grid-template-columns: 1fr !important; }
+  .px-page { padding-left: 1.25rem !important; padding-right: 1.25rem !important; }
+  .hide-mobile { display: none !important; }
+}
+@media (max-width: 480px) {
+  .grid-4 { grid-template-columns: 1fr !important; }
+  .grid-2 { grid-template-columns: 1fr !important; }
+}

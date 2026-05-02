@@ -1,0 +1,181 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  username      String    @unique
+  passwordHash  String
+  avatarEmoji   String    @default("⚗️")
+  bio           String?
+  joinedAt      DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  personas       Persona[]
+  reputation     Reputation?
+  presence       Presence?
+  signals        Signal[]
+  transmissions  Transmission[]
+  roomMembers    RoomMember[]
+  factionMembers FactionMember[]
+  tipsGiven      Tip[] @relation("TipsGiven")
+  tipsReceived   Tip[] @relation("TipsReceived")
+
+  @@map("users")
+}
+
+model Persona {
+  id         String   @id @default(cuid())
+  userId     String
+  name       String
+  type       String
+  worldScope String[]
+  isActive   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  signals Signal[]
+
+  @@map("personas")
+}
+
+model Reputation {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  wisdom     Int      @default(0)
+  creativity Int      @default(0)
+  discovery  Int      @default(0)
+  trust      Int      @default(0)
+  debate     Int      @default(0)
+  legacy     Int      @default(0)
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("reputations")
+}
+
+model Presence {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  state     String   @default("open")
+  worldId   String?
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("presences")
+}
+
+model MemoryRoom {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  worldId     String   @default("commons")
+  color       String   @default("#a89bff")
+  creatorId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members RoomMember[]
+  signals Signal[]
+
+  @@map("memory_rooms")
+}
+
+model RoomMember {
+  id       String     @id @default(cuid())
+  userId   String
+  roomId   String
+  joinedAt DateTime   @default(now())
+
+  user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room MemoryRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roomId])
+  @@map("room_members")
+}
+
+model Signal {
+  id        String      @id @default(cuid())
+  authorId  String
+  personaId String?
+  roomId    String?
+  content   String
+  worldId   String      @default("commons")
+  mood      String?
+  mediaUrl  String?
+  createdAt DateTime    @default(now())
+
+  author  User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  persona Persona?    @relation(fields: [personaId], references: [id])
+  room    MemoryRoom? @relation(fields: [roomId], references: [id])
+
+  @@map("signals")
+}
+
+model Transmission {
+  id          String   @id @default(cuid())
+  creatorId   String
+  title       String
+  type        String
+  worldId     String   @default("forge")
+  isLive      Boolean  @default(false)
+  viewers     Int      @default(0)
+  mediaUrl    String?
+  description String?
+  createdAt   DateTime @default(now())
+
+  creator User  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  tips    Tip[]
+
+  @@map("transmissions")
+}
+
+model Tip {
+  id             String        @id @default(cuid())
+  fromUserId     String
+  toUserId       String
+  transmissionId String?
+  amount         Int           @default(1)
+  context        String
+  createdAt      DateTime      @default(now())
+
+  fromUser     User          @relation("TipsGiven",    fields: [fromUserId],     references: [id])
+  toUser       User          @relation("TipsReceived", fields: [toUserId],       references: [id])
+  transmission Transmission? @relation(fields: [transmissionId], references: [id])
+
+  @@map("tips")
+}
+
+model Faction {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  color       String   @default("#a89bff")
+  territory   String?
+  createdAt   DateTime @default(now())
+
+  members FactionMember[]
+
+  @@map("factions")
+}
+
+model FactionMember {
+  id        String   @id @default(cuid())
+  userId    String
+  factionId String
+  role      String   @default("member")
+  joinedAt  DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  faction Faction @relation(fields: [factionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, factionId])
+  @@map("faction_members")
+}
