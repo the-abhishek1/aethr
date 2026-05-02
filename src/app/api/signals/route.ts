@@ -10,12 +10,13 @@ export async function GET(req: NextRequest) {
   const limit = parseInt(searchParams.get('limit') || '20')
 
   const signals = await prisma.signal.findMany({
-    where: { worldId, roomId },
+    where: { worldId, roomId, parentId: null }, // top-level only
     take: limit,
     orderBy: { createdAt: 'desc' },
     include: {
       author: { select: { id: true, username: true, avatarEmoji: true } },
       persona: { select: { name: true, type: true } },
+      _count: { select: { replies: true } },
     }
   })
 
@@ -41,6 +42,7 @@ export async function POST(req: NextRequest) {
     include: {
       author: { select: { id: true, username: true, avatarEmoji: true } },
       persona: { select: { name: true, type: true } },
+      _count: { select: { replies: true } },
     }
   })
 

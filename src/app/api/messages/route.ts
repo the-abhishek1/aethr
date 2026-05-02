@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { sendEmail, messageEmail } from '@/lib/email'
 
 export async function GET() {
   const session = await getSession()
@@ -16,7 +17,6 @@ export async function GET() {
     }
   })
 
-  // Group into conversations (latest message per partner)
   const convMap = new Map<string, any>()
   for (const msg of messages) {
     const otherId = msg.fromUserId === session.id ? msg.toUserId : msg.fromUserId
@@ -37,17 +37,30 @@ export async function POST(req: NextRequest) {
   if (!toUserId || !content?.trim()) return NextResponse.json({ error: 'Required fields missing' }, { status: 400 })
   if (toUserId === session.id) return NextResponse.json({ error: 'Cannot message yourself' }, { status: 400 })
 
-  const message = await prisma.message.create({
-    data: { fromUserId: session.id, toUserId, content: content.trim() },
-    include: {
-      fromUser: { select: { id: true, username: true, avatarEmoji: true } },
-      toUser:   { select: { id: true, username: true, avatarEmoji: true } },
-    }
-  })
+  const [message, recipient] = await Promise.all([
+    prisma.message.create({
+      data: { fromUserId: session.id, toUserId, content: content.trim() },
+      include: {
+        fromUser: { select: { id: true, username: true, avatarEmoji: true } },
+        toUser:   { select: { id: true, username: true, avatarEmoji: true } },
+      }
+    }),
+    prisma.user.findUnique({ where: { id: toUserId }, select: { email: true, username: true } })
+  ])
 
+  // In-app notification
   await prisma.notification.create({
     data: { userId: toUserId, type: 'message', title: `Message from @${session.username}`, body: content.slice(0, 80), link: '/messages' }
   })
+
+  // Email notification (non-blocking)
+  if (recipient?.email) {
+    sendEmail({
+      to: recipient.email,
+      subject: `Message from @${session.username} on Aethr`,
+      html: messageEmail(recipient.username, session.username, content.slice(0, 120)),
+    }).catch(console.error)
+  }
 
   return NextResponse.json({ message })
 }

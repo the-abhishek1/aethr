@@ -94,7 +94,7 @@ export default function OnboardingPage() {
               </div>
             </div>
           )}
-          <button onClick={() => { if (step < steps.length-1) setStep(s=>s+1); else router.push('/dashboard') }} disabled={disabled} style={{ marginTop:'3rem', width:'100%', fontFamily:'var(--font-mono)', fontSize:'0.72rem', letterSpacing:'0.15em', textTransform:'uppercase', padding:'1rem', borderRadius:'2px', border:'none', background:'var(--aether)', color:'var(--void)', cursor:'none', opacity: disabled ? 0.3 : 1, transition:'opacity 0.2s' }}>
+          <button onClick={() => { if (step < steps.length-1) setStep(s=>s+1); else { fetch('/api/onboarding', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ personaType: persona, worldId: world, presenceState: presence }) }).finally(() => router.push('/dashboard')) } }} disabled={disabled} style={{ marginTop:'3rem', width:'100%', fontFamily:'var(--font-mono)', fontSize:'0.72rem', letterSpacing:'0.15em', textTransform:'uppercase', padding:'1rem', borderRadius:'2px', border:'none', background:'var(--aether)', color:'var(--void)', cursor:'none', opacity: disabled ? 0.3 : 1, transition:'opacity 0.2s' }}>
             {step === steps.length-1 ? 'Enter Aethr →' : 'Continue →'}
           </button>
         </div>

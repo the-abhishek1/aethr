@@ -2,6 +2,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import SectionLabel from '@/components/ui/SectionLabel'
 import SignalComposer from '@/components/ui/SignalComposer'
+import SignalCard from '@/components/ui/SignalCard'
+import { SignalSkeleton } from '@/components/ui/Skeleton'
 import { useAuth } from '@/context/AuthContext'
 
 const PRESENCE_STATES = [
@@ -16,6 +18,7 @@ export default function CommonsPage() {
   const [presence, setPresence] = useState('open')
   const [rooms, setRooms] = useState<any[]>([])
   const [signals, setSignals] = useState<any[]>([])
+  const [loadingSignals, setLoadingSignals] = useState(true)
   const [newRoom, setNewRoom] = useState('')
   const [creatingRoom, setCreatingRoom] = useState(false)
   const [showRoomInput, setShowRoomInput] = useState(false)
@@ -28,9 +31,11 @@ export default function CommonsPage() {
   }, [])
 
   const loadSignals = useCallback(async () => {
+    setLoadingSignals(true)
     const res = await fetch('/api/signals?world=commons&limit=20')
     const data = await res.json()
     setSignals(data.signals || [])
+    setLoadingSignals(false)
   }, [])
 
   useEffect(() => {
@@ -150,24 +155,14 @@ export default function CommonsPage() {
               <div style={{ marginBottom: '1rem' }}>
                 <SignalComposer worldId="commons" onPosted={sig => setSignals(prev => [sig, ...prev])} />
               </div>
-              {signals.length === 0 ? (
+              {loadingSignals ? (
+                <>{[1,2,3].map(i => <SignalSkeleton key={i} />)}</>
+              ) : signals.length === 0 ? (
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text-dim)', padding: '1rem 0', textAlign: 'center' }}>
                   No signals yet — be the first to drop one.
                 </div>
               ) : signals.map((s: any) => (
-                <div key={s.id} style={{ padding: '1rem 0', borderBottom: '0.5px solid var(--border)' }}>
-                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
-                    <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--surface)', border: '0.5px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', flexShrink: 0 }}>{s.author?.avatarEmoji}</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--aether)' }}>@{s.author?.username}</span>
-                        {s.mood && <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', color: 'var(--text-dim)', padding: '0.1rem 0.5rem', border: '0.5px solid var(--border)', borderRadius: '99px' }}>{s.mood}</span>}
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', color: 'var(--text-dim)' }}>{new Date(s.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                      </div>
-                      <p style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', color: 'var(--text)', lineHeight: 1.5 }}>{s.content}</p>
-                    </div>
-                  </div>
-                </div>
+                <SignalCard key={s.id} signal={s} />
               ))}
             </div>
           </div>

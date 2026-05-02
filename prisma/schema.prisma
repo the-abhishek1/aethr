@@ -34,6 +34,9 @@ model User {
   messagesReceived Message[]         @relation("MessagesReceived")
   mysteryExplorers MysteryExplorer[]
   mysteryAttempts  MysteryAttempt[]
+  journalEntries   JournalEntry[]
+  repTradesGiven   RepTrade[]        @relation("RepTradesGiven")
+  repTradesReceived RepTrade[]       @relation("RepTradesReceived")
 
   @@map("users")
 }
@@ -125,6 +128,9 @@ model Signal {
   persona Persona?    @relation(fields: [personaId], references: [id])
   room    MemoryRoom? @relation(fields: [roomId], references: [id])
 
+  parentId  String?
+  parent    Signal?   @relation("SignalReplies", fields: [parentId], references: [id])
+  replies   Signal[]  @relation("SignalReplies")
   @@map("signals")
 }
 
@@ -332,4 +338,46 @@ model GalaxyEvent {
   createdAt   DateTime @default(now())
 
   @@map("galaxy_events")
+}
+
+model JournalEntry {
+  id        String   @id @default(cuid())
+  userId    String
+  content   String
+  mood      String?
+  worldId   String   @default("sanctum")
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("journal_entries")
+}
+
+model Monument {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  type        String   // mystery_solved | first_discovery | faction_war | debate_winner | milestone
+  worldId     String
+  actorId     String?
+  actorName   String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@map("monuments")
+}
+
+model RepTrade {
+  id          String   @id @default(cuid())
+  fromUserId  String
+  toUserId    String
+  dimension   String   // wisdom | creativity | discovery | trust | debate | legacy
+  amount      Int
+  reason      String
+  createdAt   DateTime @default(now())
+
+  fromUser User @relation("RepTradesGiven",    fields: [fromUserId], references: [id])
+  toUser   User @relation("RepTradesReceived", fields: [toUserId],   references: [id])
+
+  @@map("rep_trades")
 }
