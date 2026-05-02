@@ -153,13 +153,25 @@ export default function CommonsPage() {
             {/* Signals feed */}
             <div className="signals-area">
               <div style={{ marginBottom: '1rem' }}>
-                <SignalComposer worldId="commons" onPosted={sig => setSignals(prev => [sig, ...prev])} />
+                {user ? (
+                  <SignalComposer worldId="commons" onPosted={sig => setSignals(prev => [sig, ...prev])} />
+                ) : (
+                  <a href="/signup" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.85rem 1.1rem', background: 'var(--deep)', border: '0.5px solid var(--border-bright)', borderRadius: '2px', textDecoration: 'none', transition: 'border-color 0.2s' }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text-dim)' }}>Join Aethr to drop signals into the galaxy...</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--aether)', marginLeft: 'auto', whiteSpace: 'nowrap' }}>Join free →</span>
+                  </a>
+                )}
               </div>
               {loadingSignals ? (
                 <>{[1,2,3].map(i => <SignalSkeleton key={i} />)}</>
               ) : signals.length === 0 ? (
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text-dim)', padding: '1rem 0', textAlign: 'center' }}>
-                  No signals yet — be the first to drop one.
+                <div style={{ padding: '2rem', textAlign: 'center', border: '0.5px solid var(--border)', borderRadius: '2px' }}>
+                  <div style={{ fontSize: '2rem', marginBottom: '0.75rem' }}>📡</div>
+                  <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>No signals yet.</p>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', color: 'var(--text-dim)', marginBottom: '1.25rem' }}>Be the first to drop a signal in The Commons.</p>
+                  {!user && (
+                    <a href="/signup" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', letterSpacing: '0.1em', textTransform: 'uppercase', textDecoration: 'none', color: 'var(--void)', background: 'var(--aether)', padding: '0.6rem 1.25rem', borderRadius: '2px', display: 'inline-block' }}>Join to post →</a>
+                  )}
                 </div>
               ) : signals.map((s: any) => (
                 <SignalCard key={s.id} signal={s} />
