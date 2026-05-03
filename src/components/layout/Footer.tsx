@@ -10,7 +10,7 @@ export default function Footer() {
   const { user } = useAuth()
 
   return (
-    <footer style={{ borderTop: '0.5px solid var(--border)', padding: '3.5rem 2rem 2rem', position: 'relative', zIndex: 10 }}>
+    <footer style={{ borderTop: '0.5px solid var(--border)', padding: '3.5rem 2rem 2rem', position: 'relative', zIndex: 10, marginBottom:45 }}>
       <style>{`
         .footer-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 2.5rem; margin-bottom: 2.5rem; }
         @media (max-width: 900px) { .footer-grid { grid-template-columns: 1fr 1fr; gap: 2rem; } }
