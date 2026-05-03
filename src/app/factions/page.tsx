@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import SectionLabel from '@/components/ui/SectionLabel'
+import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
 
 const FACTION_COLORS = ['#a89bff','#1D9E75','#D85A30','#378ADD','#BA7517','#d4b896']
@@ -101,10 +102,11 @@ export default function FactionsPage() {
             {factions.map((f: any) => {
               const isMember = f.members?.some((m: any) => m.userId === user?.id)
               return (
-                <div key={f.id} style={{ background: 'var(--void)', padding: '1.75rem', transition: 'background 0.2s' }}
+                <div key={f.id} style={{ position: 'relative', background: 'var(--void)', padding: '1.75rem', transition: 'background 0.2s' }}
                   onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--deep)'}
                   onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'var(--void)'}
                 >
+                  <Link href={`/factions/${f.id}`} style={{ position: 'absolute', inset: 0, zIndex: 0 }} aria-label={`View ${f.name}`} />
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
                     <div style={{ width: 12, height: 12, borderRadius: '50%', background: f.color, boxShadow: `0 0 8px ${f.color}`, flexShrink: 0 }} />
                     <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', color: 'var(--text)' }}>{f.name}</div>
@@ -119,9 +121,9 @@ export default function FactionsPage() {
                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.58rem', color: 'var(--text-dim)' }}>{f._count.members} member{f._count.members !== 1 ? 's' : ''}</span>
                     {user && (
                       isMember ? (
-                        <button onClick={() => leave(f.id)} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.58rem', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '0.35rem 0.9rem', background: 'transparent', border: '0.5px solid var(--border)', color: 'var(--text-dim)', borderRadius: '2px', cursor: 'none' }}>Leave</button>
+                        <button onClick={() => leave(f.id)} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.58rem', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '0.35rem 0.9rem', background: 'transparent', border: '0.5px solid var(--border)', color: 'var(--text-dim)', borderRadius: '2px', cursor: 'none', position: 'relative', zIndex: 1 }}>Leave</button>
                       ) : (
-                        <button onClick={() => join(f.id)} disabled={joining === f.id} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.58rem', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '0.35rem 0.9rem', background: `${f.color}18`, border: `0.5px solid ${f.color}66`, color: f.color, borderRadius: '2px', cursor: 'none' }}>{joining === f.id ? '...' : 'Join'}</button>
+                        <button onClick={() => join(f.id)} disabled={joining === f.id} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.58rem', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '0.35rem 0.9rem', background: `${f.color}18`, border: `0.5px solid ${f.color}66`, color: f.color, borderRadius: '2px', cursor: 'none', position: 'relative', zIndex: 1 }}>{joining === f.id ? '...' : 'Join'}</button>
                       )
                     )}
                   </div>

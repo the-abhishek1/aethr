@@ -4,7 +4,7 @@ import { WORLDS } from '@/lib/constants'
 import { useAuth } from '@/context/AuthContext'
 
 const liveWorlds = () => WORLDS.filter(w => w.status === 'live')
-const upcomingWorlds = () => WORLDS.filter(w => w.status === 'coming')
+const upcomingWorlds = () => WORLDS.filter(w => w.status === ('coming' as string))
 
 export default function Footer() {
   const { user } = useAuth()
@@ -89,6 +89,7 @@ export default function Footer() {
                 <Link href="/profile"    className="footer-link" style={{ color: 'var(--text-muted)' }}>Profile</Link>
                 <Link href="/messages"   className="footer-link" style={{ color: 'var(--text-muted)' }}>Messages</Link>
                 <Link href="/sanctum"    className="footer-link" style={{ color: 'var(--text-muted)' }}>The Sanctum</Link>
+                <Link href="/settings"   className="footer-link" style={{ color: 'var(--text-dim)' }}>Settings</Link>
               </>
             )}
           </div>

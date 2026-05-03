@@ -37,6 +37,9 @@ model User {
   journalEntries   JournalEntry[]
   repTradesGiven   RepTrade[]        @relation("RepTradesGiven")
   repTradesReceived RepTrade[]       @relation("RepTradesReceived")
+  signalReactions  SignalReaction[]
+  following        Follow[]          @relation("Following")
+  followers        Follow[]          @relation("Followers")
 
   @@map("users")
 }
@@ -114,24 +117,39 @@ model RoomMember {
 }
 
 model Signal {
-  id        String      @id @default(cuid())
+  id        String   @id @default(cuid())
   authorId  String
   personaId String?
   roomId    String?
+  parentId  String?
   content   String
-  worldId   String      @default("commons")
+  worldId   String   @default("commons")
   mood      String?
   mediaUrl  String?
-  createdAt DateTime    @default(now())
+  createdAt DateTime @default(now())
 
-  author  User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  persona Persona?    @relation(fields: [personaId], references: [id])
-  room    MemoryRoom? @relation(fields: [roomId], references: [id])
+  author    User            @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  persona   Persona?        @relation(fields: [personaId], references: [id])
+  room      MemoryRoom?     @relation(fields: [roomId], references: [id])
+  parent    Signal?         @relation("SignalReplies", fields: [parentId], references: [id])
+  replies   Signal[]        @relation("SignalReplies")
+  reactions SignalReaction[]
 
-  parentId  String?
-  parent    Signal?   @relation("SignalReplies", fields: [parentId], references: [id])
-  replies   Signal[]  @relation("SignalReplies")
   @@map("signals")
+}
+
+model SignalReaction {
+  id        String   @id @default(cuid())
+  signalId  String
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+
+  signal Signal @relation(fields: [signalId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId],   references: [id], onDelete: Cascade)
+
+  @@unique([signalId, userId, emoji])
+  @@map("signal_reactions")
 }
 
 model Transmission {
@@ -188,7 +206,7 @@ model FactionMember {
   role      String   @default("member")
   joinedAt  DateTime @default(now())
 
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId],    references: [id], onDelete: Cascade)
   faction Faction @relation(fields: [factionId], references: [id], onDelete: Cascade)
 
   @@unique([userId, factionId])
@@ -232,7 +250,7 @@ model DebateVote {
   side     String
 
   debate Debate @relation(fields: [debateId], references: [id], onDelete: Cascade)
-  user   User   @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId],   references: [id])
 
   @@unique([debateId, userId])
   @@map("debate_votes")
@@ -357,7 +375,7 @@ model Monument {
   id          String   @id @default(cuid())
   title       String
   description String
-  type        String   // mystery_solved | first_discovery | faction_war | debate_winner | milestone
+  type        String
   worldId     String
   actorId     String?
   actorName   String?
@@ -371,7 +389,7 @@ model RepTrade {
   id          String   @id @default(cuid())
   fromUserId  String
   toUserId    String
-  dimension   String   // wisdom | creativity | discovery | trust | debate | legacy
+  dimension   String
   amount      Int
   reason      String
   createdAt   DateTime @default(now())
@@ -380,4 +398,17 @@ model RepTrade {
   toUser   User @relation("RepTradesReceived", fields: [toUserId],   references: [id])
 
   @@map("rep_trades")
+}
+
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("Following", fields: [followerId],  references: [id], onDelete: Cascade)
+  following User @relation("Followers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@map("follows")
 }

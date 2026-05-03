@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useRealtimeMessages } from '@/hooks/useRealtime'
 import SectionLabel from '@/components/ui/SectionLabel'
 import { useAuth } from '@/context/AuthContext'
 
@@ -32,6 +33,20 @@ export default function MessagesPage() {
   }, [])
 
   useEffect(() => { loadConvs() }, [loadConvs])
+
+  // Live messages — incoming DMs appear instantly
+  useRealtimeMessages(useCallback((msg: any) => {
+    // Refresh conversations list
+    loadConvs()
+    // If this thread is open, append message
+    if (partner && (msg.from_user_id === partner.id || msg.to_user_id === partner.id)) {
+      setMessages(prev => {
+        if (prev.some(m => m.id === msg.id)) return prev
+        return [...prev, msg]
+      })
+      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+    }
+  }, [partner, loadConvs]))
 
   useEffect(() => {
     if (selected) loadThread(selected.user.id)

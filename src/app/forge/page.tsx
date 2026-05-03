@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import { useRealtimeSignals } from '@/hooks/useRealtime'
 import SectionLabel from '@/components/ui/SectionLabel'
 import SignalComposer from '@/components/ui/SignalComposer'
 import { useAuth } from '@/context/AuthContext'
@@ -40,6 +41,9 @@ export default function ForgePage() {
   }, [])
 
   useEffect(() => { loadTransmissions(); loadSignals() }, [tab])
+
+  // Live signals in The Forge
+  useRealtimeSignals('forge', setSignals)
 
   useEffect(() => {
     if (!selected) return

@@ -84,7 +84,7 @@ function SearchContent() {
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.58rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: '0.75rem' }}>Travellers</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', background: 'var(--border)', border: '0.5px solid var(--border)' }}>
                   {results.users.map((u: any) => (
-                    <Link key={u.id} href={`/profile`} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.9rem 1.1rem', background: 'var(--void)', textDecoration: 'none', transition: 'background 0.15s' }}
+                    <Link key={u.id} href={`/profile/${u.username}`} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.9rem 1.1rem', background: 'var(--void)', textDecoration: 'none', transition: 'background 0.15s' }}
                       onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--deep)'}
                       onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'var(--void)'}
                     >

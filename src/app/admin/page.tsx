@@ -4,7 +4,7 @@ import { useAuth } from '@/context/AuthContext'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
-const ADMIN_USERS = ['0xIdiot'] // Add your username here
+// Admin status comes from server via AuthContext — no client-side username check
 
 export default function AdminPage() {
   const { user, loading } = useAuth()
@@ -17,13 +17,13 @@ export default function AdminPage() {
   const [msg, setMsg] = useState('')
 
   useEffect(() => {
-    if (!loading && (!user || !ADMIN_USERS.includes(user.username))) {
+    if (!loading && (!user || !user.isAdmin)) {
       router.push('/dashboard')
     }
   }, [user, loading, router])
 
   useEffect(() => {
-    if (!user || !ADMIN_USERS.includes(user.username)) return
+    if (!user || !user.isAdmin) return
 
     fetch('/api/archive').then(r => r.json()).then(d => setStats(d.lore))
     fetch('/api/search?q=a&type=users').then(r => r.json()).then(d => setUsers(d.results?.users || []))
@@ -43,7 +43,7 @@ export default function AdminPage() {
     setTimeout(() => setMsg(''), 3000)
   }
 
-  if (loading || !user || !ADMIN_USERS.includes(user.username)) {
+  if (loading || !user || !user.isAdmin) {
     return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text-dim)' }}>Checking access...</div>
   }
 

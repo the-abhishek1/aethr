@@ -5,6 +5,7 @@ import SignalComposer from '@/components/ui/SignalComposer'
 import SignalCard from '@/components/ui/SignalCard'
 import { SignalSkeleton } from '@/components/ui/Skeleton'
 import { useAuth } from '@/context/AuthContext'
+import { useRealtimeSignals } from '@/hooks/useRealtime'
 
 const PRESENCE_STATES = [
   { id: 'open', label: 'Open', color: '#a89bff' },
@@ -16,6 +17,7 @@ const PRESENCE_STATES = [
 export default function CommonsPage() {
   const { user } = useAuth()
   const [presence, setPresence] = useState('open')
+  const [feedTab, setFeedTab] = useState<'all'|'following'>('all')
   const [rooms, setRooms] = useState<any[]>([])
   const [signals, setSignals] = useState<any[]>([])
   const [loadingSignals, setLoadingSignals] = useState(true)
@@ -23,6 +25,7 @@ export default function CommonsPage() {
   const [creatingRoom, setCreatingRoom] = useState(false)
   const [showRoomInput, setShowRoomInput] = useState(false)
   const [selected, setSelected] = useState<string | null>(null)
+  const [presenceUsers, setPresenceUsers] = useState<any[]>([])
 
   const loadRooms = useCallback(async () => {
     const res = await fetch('/api/rooms?world=commons')
@@ -32,16 +35,24 @@ export default function CommonsPage() {
 
   const loadSignals = useCallback(async () => {
     setLoadingSignals(true)
-    const res = await fetch('/api/signals?world=commons&limit=20')
+    const url = feedTab === 'following'
+      ? '/api/signals?feed=following&limit=20'
+      : '/api/signals?world=commons&limit=20'
+    const res = await fetch(url)
     const data = await res.json()
     setSignals(data.signals || [])
     setLoadingSignals(false)
-  }, [])
+  }, [feedTab])
 
   useEffect(() => {
     loadRooms()
     loadSignals()
+    // Load real presence users
+    fetch('/api/presence/all').then(r => r.json()).then(d => setPresenceUsers(d.users || [])).catch(() => {})
   }, [loadRooms, loadSignals])
+
+  // Live realtime — new signals appear instantly
+  useRealtimeSignals('commons', setSignals)
 
   const updatePresence = async (state: string) => {
     setPresence(state)
@@ -71,13 +82,16 @@ export default function CommonsPage() {
     loadRooms()
   }
 
-  const demoPresence = [
-    { name: 'Lyra', state: 'creating', color: '#BA7517', x: '22%', y: '35%', size: 48 },
-    { name: 'Kael', state: 'deep-work', color: '#1D9E75', x: '58%', y: '28%', size: 36 },
-    { name: 'Nova', state: 'open', color: '#a89bff', x: '70%', y: '55%', size: 44 },
-    { name: 'Ryn', state: 'exploring', color: '#378ADD', x: '38%', y: '62%', size: 32 },
-    { name: 'Sol', state: 'resting', color: '#444441', x: '15%', y: '68%', size: 28 },
-  ]
+  // Real presence users positioned around the map
+  const STATE_COLORS: Record<string,string> = { 'deep-work':'#1D9E75', 'open':'#a89bff', 'creating':'#BA7517', 'exploring':'#378ADD', 'competing':'#D85A30', 'resting':'#444441' }
+  // Deterministic positions based on user id
+  const getPos = (id: string, i: number) => {
+    const angles = [30,75,120,160,200,240,290,330]
+    const radii  = [28,35,38,32,40,30,36,42]
+    const angle  = (angles[i % angles.length] + parseInt(id.slice(-2),16) % 15) * Math.PI / 180
+    const r      = radii[i % radii.length]
+    return { x: `${45 + r * Math.cos(angle)}%`, y: `${50 + r * Math.sin(angle)}%` }
+  }
 
   return (
     <>
@@ -133,25 +147,37 @@ export default function CommonsPage() {
                   <div style={{ position: 'absolute', top: '-1.5rem', left: '50%', transform: 'translateX(-50%)', fontFamily: 'var(--font-mono)', fontSize: '0.55rem', color: 'var(--aether)', whiteSpace: 'nowrap' }}>You</div>
                 </div>
               )}
-              {/* Demo presence dots */}
-              {demoPresence.map(p => (
-                <div key={p.name} onClick={() => setSelected(selected === p.name ? null : p.name)} style={{ position: 'absolute', left: p.x, top: p.y, cursor: 'none', transform: 'translate(-50%,-50%)', zIndex: 2 }}>
-                  <div style={{ width: p.size, height: p.size, borderRadius: '50%', background: 'var(--surface)', border: `0.5px solid ${selected === p.name ? p.color : p.color + '44'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: p.size * 0.38, boxShadow: `0 0 ${selected === p.name ? 14 : 5}px ${p.color}${selected === p.name ? '66' : '22'}`, transition: 'all 0.25s', position: 'relative' }}>
-                    {p.name[0]}
-                    <div style={{ position: 'absolute', bottom: -2, right: -2, width: 8, height: 8, borderRadius: '50%', background: p.color, border: '1.5px solid var(--void)' }} />
-                  </div>
-                  {selected === p.name && (
-                    <div style={{ position: 'absolute', bottom: '110%', left: '50%', transform: 'translateX(-50%)', background: 'var(--deep)', border: '0.5px solid var(--border-bright)', borderRadius: '2px', padding: '0.4rem 0.75rem', whiteSpace: 'nowrap', zIndex: 10 }}>
-                      <div style={{ fontFamily: 'var(--font-display)', fontSize: '0.95rem', color: 'var(--text)' }}>{p.name}</div>
-                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', color: p.color }}>{p.state}</div>
+              {/* Real presence dots */}
+              {presenceUsers.filter(p => p.id !== user?.id).map((p, i) => {
+                const pos   = getPos(p.id, i)
+                const color = STATE_COLORS[p.presence?.state] || '#a89bff'
+                const key   = p.username
+                return (
+                  <div key={key} onClick={() => setSelected(selected === key ? null : key)} style={{ position: 'absolute', left: pos.x, top: pos.y, cursor: 'none', transform: 'translate(-50%,-50%)', zIndex: 2 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--surface)', border: `0.5px solid ${selected === key ? color : color+'44'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', boxShadow: `0 0 ${selected===key?12:4}px ${color}${selected===key?'66':'22'}`, transition: 'all 0.25s', position: 'relative' }}>
+                      {p.avatarEmoji}
+                      <div style={{ position: 'absolute', bottom: -2, right: -2, width: 8, height: 8, borderRadius: '50%', background: color, border: '1.5px solid var(--void)' }} />
                     </div>
-                  )}
-                </div>
-              ))}
+                    {selected === key && (
+                      <div style={{ position: 'absolute', bottom: '110%', left: '50%', transform: 'translateX(-50%)', background: 'var(--deep)', border: '0.5px solid var(--border-bright)', borderRadius: '2px', padding: '0.4rem 0.75rem', whiteSpace: 'nowrap', zIndex: 10 }}>
+                        <div style={{ fontFamily: 'var(--font-display)', fontSize: '0.95rem', color: 'var(--text)' }}>@{p.username}</div>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', color }}>{p.presence?.state || 'open'}</div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
 
             {/* Signals feed */}
             <div className="signals-area">
+              {/* Feed tabs */}
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                {(['all', 'following'] as const).map(t => (
+                  <button key={t} onClick={() => setFeedTab(t)} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.58rem', letterSpacing: '0.1em', textTransform: 'capitalize', padding: '0.35rem 0.85rem', borderRadius: '2px', cursor: 'none', background: feedTab === t ? 'var(--aether-dim)' : 'transparent', border: `0.5px solid ${feedTab === t ? 'var(--aether)' : 'var(--border)'}`, color: feedTab === t ? 'var(--aether)' : 'var(--text-dim)' }}>{t === 'all' ? '🌿 All' : '👥 Following'}</button>
+                ))}
+              </div>
+
               <div style={{ marginBottom: '1rem' }}>
                 {user ? (
                   <SignalComposer worldId="commons" onPosted={sig => setSignals(prev => [sig, ...prev])} />
@@ -166,10 +192,16 @@ export default function CommonsPage() {
                 <>{[1,2,3].map(i => <SignalSkeleton key={i} />)}</>
               ) : signals.length === 0 ? (
                 <div style={{ padding: '2rem', textAlign: 'center', border: '0.5px solid var(--border)', borderRadius: '2px' }}>
-                  <div style={{ fontSize: '2rem', marginBottom: '0.75rem' }}>📡</div>
-                  <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>No signals yet.</p>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', color: 'var(--text-dim)', marginBottom: '1.25rem' }}>Be the first to drop a signal in The Commons.</p>
-                  {!user && (
+                  <div style={{ fontSize: '2rem', marginBottom: '0.75rem' }}>{feedTab === 'following' ? '👥' : '📡'}</div>
+                  <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+                    {feedTab === 'following' ? 'Follow people to see their signals here.' : 'No signals yet.'}
+                  </p>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', color: 'var(--text-dim)', marginBottom: '1.25rem' }}>
+                    {feedTab === 'following' ? 'Find people to follow by visiting their profiles.' : 'Be the first to drop a signal in The Commons.'}
+                  </p>
+                  {feedTab === 'following' ? (
+                    <a href="/search" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', letterSpacing: '0.1em', textTransform: 'uppercase', textDecoration: 'none', color: 'var(--aether)', border: '0.5px solid rgba(168,155,255,0.3)', padding: '0.6rem 1.25rem', borderRadius: '2px', display: 'inline-block' }}>Search people →</a>
+                  ) : !user && (
                     <a href="/signup" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', letterSpacing: '0.1em', textTransform: 'uppercase', textDecoration: 'none', color: 'var(--void)', background: 'var(--aether)', padding: '0.6rem 1.25rem', borderRadius: '2px', display: 'inline-block' }}>Join to post →</a>
                   )}
                 </div>

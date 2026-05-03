@@ -1,65 +1,88 @@
 'use client'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
+import { useRealtimeNotifications } from '@/hooks/useRealtime'
 
 const TYPE_ICON: Record<string, string> = {
-  tip_received: '✦',
-  debate_reply: '⚔️',
-  faction_joined: '🏴',
-  signal_reply: '📡',
-  discovery_ripple: '🔭',
+  tip_received:      '✦',
+  debate_reply:      '⚔️',
+  faction_joined:    '🏴',
+  signal_reply:      '📡',
+  discovery_ripple:  '🔭',
+  message:           '✉',
+  reaction:          '🌀',
+  mystery_solved:    '🌑',
+  rep_trade:         '💱',
+  welcome:           '⚗️',
 }
 
 export default function NotificationBell() {
   const { user } = useAuth()
-  const [unread, setUnread] = useState(0)
+  const [unread, setUnread]               = useState(0)
   const [notifications, setNotifications] = useState<any[]>([])
-  const [open, setOpen] = useState(false)
+  const [open, setOpen]                   = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!user) return
-    const res = await fetch('/api/notifications')
+    const res  = await fetch('/api/notifications')
     const data = await res.json()
     setUnread(data.unreadCount || 0)
     setNotifications(data.notifications || [])
-  }
-
-  useEffect(() => {
-    if (user) load()
-    const interval = setInterval(() => { if (user) load() }, 30000) // poll every 30s
-    return () => clearInterval(interval)
   }, [user])
 
+  // Initial load + 30s poll fallback
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
+    if (user) load()
+    const iv = setInterval(() => { if (user) load() }, 30000)
+    return () => clearInterval(iv)
+  }, [user, load])
+
+  // Live realtime — new notifications pop instantly
+  useRealtimeNotifications(useCallback((n: any) => {
+    setUnread(prev => prev + 1)
+    setNotifications(prev => [n, ...prev])
+  }, []))
+
+  // Click outside to close
+  useEffect(() => {
+    const h = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
     }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
   }, [])
 
-  const markAllRead = async () => {
-    await fetch('/api/notifications', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ all: true }) })
+  const markAllRead = useCallback(async () => {
+    await fetch('/api/notifications', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ all: true }),
+    })
     setUnread(0)
     setNotifications(prev => prev.map(n => ({ ...n, read: true })))
-  }
+  }, [])
 
   if (!user) return null
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
-      <button onClick={() => { setOpen(o => !o); if (!open && unread > 0) markAllRead() }} style={{ background: 'none', border: 'none', cursor: 'none', position: 'relative', padding: '4px', display: 'flex', alignItems: 'center' }}>
+      <button
+        onClick={() => { setOpen(o => !o); if (!open && unread > 0) markAllRead() }}
+        style={{ background: 'none', border: 'none', cursor: 'none', position: 'relative', padding: '4px', display: 'flex', alignItems: 'center' }}
+      >
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: unread > 0 ? 'var(--aether)' : 'var(--text-dim)' }}>⬡</span>
         {unread > 0 && (
-          <span style={{ position: 'absolute', top: 0, right: 0, width: 14, height: 14, borderRadius: '50%', background: '#D85A30', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.5rem', color: 'white', fontWeight: 600 }}>{unread > 9 ? '9+' : unread}</span>
+          <span style={{ position: 'absolute', top: 0, right: 0, width: 14, height: 14, borderRadius: '50%', background: '#D85A30', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.48rem', color: 'white', fontWeight: 700 }}>
+            {unread > 9 ? '9+' : unread}
+          </span>
         )}
       </button>
 
       {open && (
-        <div style={{ position: 'absolute', top: 'calc(100% + 12px)', right: 0, width: 320, background: 'rgba(8,8,20,0.98)', border: '0.5px solid var(--border-bright)', borderRadius: '4px', backdropFilter: 'blur(20px)', zIndex: 200, animation: 'fadeUp 0.2s ease', maxHeight: 400, overflowY: 'auto' }}>
-          <div style={{ padding: '0.85rem 1rem', borderBottom: '0.5px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ position: 'absolute', top: 'calc(100% + 12px)', right: 0, width: 320, background: 'rgba(8,8,20,0.98)', border: '0.5px solid var(--border-bright)', borderRadius: '4px', backdropFilter: 'blur(20px)', zIndex: 200, animation: 'fadeUp 0.2s ease', maxHeight: 420, overflowY: 'auto' }}>
+          <div style={{ padding: '0.85rem 1rem', borderBottom: '0.5px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, background: 'rgba(8,8,20,0.98)' }}>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Notifications</span>
             {notifications.some(n => !n.read) && (
               <button onClick={markAllRead} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.56rem', color: 'var(--aether)', background: 'none', border: 'none', cursor: 'none' }}>Mark all read</button>
@@ -78,7 +101,9 @@ export default function NotificationBell() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontFamily: 'var(--font-display)', fontSize: '0.9rem', color: n.read ? 'var(--text-muted)' : 'var(--text)', lineHeight: 1.4, marginBottom: '0.2rem' }}>{n.title}</div>
                   <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.57rem', color: 'var(--text-dim)', lineHeight: 1.5 }}>{n.body}</div>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.52rem', color: 'var(--text-dim)', marginTop: '0.2rem' }}>{new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.52rem', color: 'var(--text-dim)', marginTop: '0.2rem' }}>
+                    {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </div>
                 </div>
                 {!n.read && <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--aether)', flexShrink: 0, marginTop: 4, boxShadow: '0 0 5px var(--aether)' }} />}
               </div>

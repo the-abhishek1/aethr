@@ -29,6 +29,8 @@ export default function DashboardPage() {
   const [signals, setSignals]   = useState<any[]>([])
   const [rep, setRep]           = useState<any>(null)
   const [persona, setPersona]   = useState('creator')
+  const [feedTab, setFeedTab]   = useState<'pulse'|'trending'>('pulse')
+  const [trending, setTrending] = useState<any>(null)
 
   const loadData = useCallback(async () => {
     try {
@@ -44,6 +46,8 @@ export default function DashboardPage() {
       if (profData.user?.reputation)  setRep(profData.user.reputation)
       if (profData.user?.personas?.[0]) setPersona(profData.user.personas[0].type)
       setSignals(sigData.signals || [])
+      // Load trending in parallel
+      fetch('/api/trending').then(r => r.json()).then(d => setTrending(d)).catch(() => {})
     } catch {}
   }, [])
 
@@ -141,7 +145,12 @@ export default function DashboardPage() {
 
           {/* Galaxy pulse */}
           <div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.56rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: '0.75rem' }}>Galaxy pulse</div>
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+            {(['pulse', 'trending'] as const).map(t => (
+              <button key={t} onClick={() => setFeedTab(t)} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.56rem', letterSpacing: '0.12em', textTransform: 'uppercase', padding: '0.35rem 0.85rem', borderRadius: '2px', cursor: 'none', background: feedTab === t ? 'var(--aether-dim)' : 'transparent', border: `0.5px solid ${feedTab === t ? 'var(--aether)' : 'var(--border)'}`, color: feedTab === t ? 'var(--aether)' : 'var(--text-dim)' }}>{t === 'pulse' ? '📡 Pulse' : '🔥 Trending'}</button>
+            ))}
+          </div>
+          {feedTab === 'pulse' && <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.56rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: '0.75rem' }}></div>}
             <div style={{ border: '0.5px solid var(--border)', background: 'var(--deep)', borderRadius: '2px' }}>
               {galaxyEvents.length === 0 ? (
                 <div style={{ padding: '2.5rem', textAlign: 'center' }}>
@@ -164,6 +173,56 @@ export default function DashboardPage() {
               ))}
             </div>
           </div>
+
+          {/* Trending panel */}
+          {feedTab === 'trending' && (
+            <div style={{ border: '0.5px solid var(--border)', background: 'var(--deep)', borderRadius: '2px' }}>
+              {!trending ? (
+                <div style={{ padding: '2rem', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.62rem', color: 'var(--text-dim)' }}>Loading...</div>
+              ) : (
+                <>
+                  {trending.signals?.length > 0 && (
+                    <div>
+                      <div style={{ padding: '0.75rem 1.1rem', borderBottom: '0.5px solid var(--border)', fontFamily: 'var(--font-mono)', fontSize: '0.54rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>Hot signals</div>
+                      {trending.signals.slice(0,5).map((s: any) => (
+                        <div key={s.id} style={{ padding: '0.9rem 1.1rem', borderBottom: '0.5px solid var(--border)', display: 'flex', gap: '0.75rem' }}>
+                          <span style={{ fontSize: '0.9rem' }}>{s.author?.avatarEmoji}</span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontFamily: 'var(--font-display)', fontSize: '0.9rem', color: 'var(--text)', lineHeight: 1.4 }}>{s.content.slice(0,80)}{s.content.length > 80 ? '…' : ''}</div>
+                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.52rem', color: 'var(--text-dim)', marginTop: '0.2rem' }}>
+                              @{s.author?.username} · {s._count.reactions} reactions · {s._count.replies} replies
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {trending.debates?.length > 0 && (
+                    <div>
+                      <div style={{ padding: '0.75rem 1.1rem', borderBottom: '0.5px solid var(--border)', fontFamily: 'var(--font-mono)', fontSize: '0.54rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>Hot debates</div>
+                      {trending.debates.slice(0,3).map((d: any) => (
+                        <div key={d.id} style={{ padding: '0.9rem 1.1rem', borderBottom: '0.5px solid var(--border)' }}>
+                          <div style={{ fontFamily: 'var(--font-display)', fontSize: '0.9rem', color: 'var(--text)', marginBottom: '0.2rem' }}>{d.title}</div>
+                          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.52rem', color: '#D85A30' }}>{d._count.arguments} arguments · {d._count.votes} votes</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {trending.discoveries?.length > 0 && (
+                    <div>
+                      <div style={{ padding: '0.75rem 1.1rem', borderBottom: '0.5px solid var(--border)', fontFamily: 'var(--font-mono)', fontSize: '0.54rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>Rippling discoveries</div>
+                      {trending.discoveries.map((d: any) => (
+                        <div key={d.id} style={{ padding: '0.9rem 1.1rem', borderBottom: '0.5px solid var(--border)' }}>
+                          <div style={{ fontFamily: 'var(--font-display)', fontSize: '0.9rem', color: 'var(--text)', marginBottom: '0.2rem' }}>{d.title}</div>
+                          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.52rem', color: '#378ADD' }}>@{d.author?.username} · {d.ripples} ripples</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
 
           {/* Sidebar */}
           <div className="dash-sidebar">

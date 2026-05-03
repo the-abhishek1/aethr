@@ -58,3 +58,23 @@ export async function PATCH(req: NextRequest) {
 
   return NextResponse.json({ user })
 }
+
+// Public profile by username — no auth required
+export async function PUT(req: Request) {
+  const { searchParams } = new URL(req.url)
+  const username = searchParams.get('username')
+  if (!username) return Response.json({ error: 'username required' }, { status: 400 })
+
+  const user = await prisma.user.findUnique({
+    where: { username },
+    select: {
+      id: true, username: true, avatarEmoji: true, bio: true, joinedAt: true,
+      reputation: true,
+      personas: { where: { isActive: true }, select: { name: true, type: true } },
+      _count: { select: { signals: true, discoveries: true, followers: true, following: true } },
+    }
+  })
+
+  if (!user) return Response.json({ error: 'Not found' }, { status: 404 })
+  return Response.json({ user })
+}

@@ -7,8 +7,8 @@ export const metadata: Metadata = { title: 'Worlds — Aethr' }
 
 export default function WorldsPage() {
   const live    = WORLDS.filter(w => w.status === 'live')
-  const coming  = WORLDS.filter(w => w.status === 'coming')
-  const horizon = WORLDS.filter(w => w.status === 'far' || w.status === 'future')
+  const coming  = WORLDS.filter(w => w.status === ('coming' as string))
+  const horizon = WORLDS.filter(w => w.status === ('far' as string) || w.status === ('future' as string))
 
   return (
     <>

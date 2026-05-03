@@ -53,7 +53,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         type: 'signal_reply',
         title: `@${session.username} replied to your signal`,
         body: content.slice(0, 80),
-        link: `/${parent.worldId}`,
+        link: `/signals/`,
       }
     })
   }

@@ -9,6 +9,7 @@ const PRIVATE = [
   '/sanctum',
   '/onboarding',
   '/admin',
+  '/settings',
 ]
 
 // Pages that redirect logged-in users away (auth pages)

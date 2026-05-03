@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import SectionLabel from '@/components/ui/SectionLabel'
@@ -13,41 +13,89 @@ const REP_COLORS: Record<string, string> = {
 }
 
 export default function PublicProfilePage() {
-  const params = useParams()
+  const params   = useParams()
   const username = params.username as string
-  const { user: me } = useAuth()
+  const { user: me, loading: authLoading } = useAuth()
   const router = useRouter()
 
-  const [profile, setProfile] = useState<any>(null)
-  const [signals, setSignals] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [notFound, setNotFound] = useState(false)
-  const [messaging, setMessaging] = useState(false)
+  const [profile, setProfile]         = useState<any>(null)
+  const [signals, setSignals]         = useState<any[]>([])
+  const [loading, setLoading]         = useState(true)
+  const [notFound, setNotFound]       = useState(false)
+  const [messaging, setMessaging]     = useState(false)
+  const [followData, setFollowData]   = useState<any>(null)
+  const [following, setFollowing]     = useState(false)
+  const [followLoading, setFollowLoading] = useState(false)
 
-  const load = useCallback(async () => {
-    // Search for user by username
-    const res = await fetch(`/api/search?q=${encodeURIComponent(username)}&type=users`)
+  // Track whether we've already redirected to avoid loops
+  const redirected = useRef(false)
+
+  const loadProfile = useCallback(async () => {
+    const res = await fetch(
+      `/api/profile?username=${encodeURIComponent(username)}`,
+      { method: 'PUT' }
+    )
+    if (!res.ok) { setNotFound(true); setLoading(false); return }
     const data = await res.json()
-    const found = data.results?.users?.find((u: any) => u.username.toLowerCase() === username.toLowerCase())
+    return data.user
+  }, [username])
 
-    if (!found) { setNotFound(true); setLoading(false); return }
+  // Step 1 — load the profile (auth-independent)
+  useEffect(() => {
+    setLoading(true)
+    setNotFound(false)
+    setProfile(null)
+    redirected.current = false
 
-    // If it's the logged-in user, redirect to own profile
-    if (me && found.id === me.id) { router.replace('/profile'); return }
+    loadProfile().then(found => {
+      if (!found) return
+      setProfile(found)
+      // Load follow data + signals
+      Promise.all([
+        fetch(`/api/follow?userId=${found.id}`)
+          .then(r => r.json())
+          .then(d => { setFollowData(d); setFollowing(d.isFollowing) })
+          .catch(() => {}),
+        fetch(`/api/signals?authorId=${found.id}&limit=20`)
+          .then(r => r.json())
+          .then(d => setSignals(d.signals || []))
+          .catch(() => {}),
+      ]).finally(() => setLoading(false))
+    })
+  }, [loadProfile])
 
-    setProfile(found)
+  // Step 2 — once BOTH auth and profile are loaded, check if it's ourselves
+  useEffect(() => {
+    if (authLoading)         return  // wait for auth
+    if (!profile)            return  // wait for profile
+    if (redirected.current)  return  // already redirected
+    if (!me)                 return  // logged out — show public profile
 
-    // Load their public signals
-    const sigRes = await fetch(`/api/signals?world=commons&limit=20`)
-    const sigData = await sigRes.json()
-    // Filter to this user's signals
-    setSignals((sigData.signals || []).filter((s: any) => s.author?.username === username))
-    setLoading(false)
-  }, [username, me, router])
+    if (me.id === profile.id) {
+      redirected.current = true
+      router.replace('/profile')
+    }
+  }, [authLoading, me, profile, router])
 
-  useEffect(() => { load() }, [load])
+  const toggleFollow = async () => {
+    if (!me) { router.push('/signin'); return }
+    setFollowLoading(true)
+    const res = await fetch('/api/follow', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: profile.id }),
+    })
+    const data = await res.json()
+    setFollowing(data.following)
+    setFollowData((prev: any) => prev ? {
+      ...prev,
+      followerCount: data.following ? prev.followerCount + 1 : Math.max(0, prev.followerCount - 1),
+      isFollowing: data.following,
+    } : null)
+    setFollowLoading(false)
+  }
 
-  const startMessage = async () => {
+  const startMessage = () => {
     if (!me) { router.push('/signin'); return }
     setMessaging(true)
     router.push(`/messages?to=${profile.id}`)
@@ -57,7 +105,7 @@ export default function PublicProfilePage() {
     <div style={{ padding: '7rem 2rem 4rem', maxWidth: 760, margin: '0 auto' }}>
       <ProfileSkeleton />
       <div style={{ marginTop: '2rem' }}>
-        {[1, 2, 3].map(i => <SignalSkeleton key={i} />)}
+        {[1,2,3].map(i => <SignalSkeleton key={i} />)}
       </div>
     </div>
   )
@@ -71,16 +119,18 @@ export default function PublicProfilePage() {
     </div>
   )
 
-  const rep = profile?.reputation
+  if (!profile) return null
+
+  const rep      = profile?.reputation
   const totalRep = rep ? Object.entries(REP_COLORS).reduce((s, [k]) => s + (rep[k] || 0), 0) : 0
 
   return (
     <>
       <style>{`
-        .pub-profile-pad { padding: 7rem 2rem 4rem; max-width: 800px; margin: 0 auto; }
+        .pub-profile-pad  { padding: 7rem 2rem 4rem; max-width: 800px; margin: 0 auto; }
         .pub-profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 2rem; }
         @media (max-width: 768px) {
-          .pub-profile-pad { padding: 6rem 1.25rem 3rem !important; }
+          .pub-profile-pad  { padding: 6rem 1.25rem 3rem !important; }
           .pub-profile-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
@@ -91,21 +141,37 @@ export default function PublicProfilePage() {
           <div style={{ width: 88, height: 88, borderRadius: '50%', background: 'var(--surface)', border: '0.5px solid var(--border-bright)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.2rem', flexShrink: 0 }}>
             {profile.avatarEmoji}
           </div>
+
           <div style={{ flex: 1, minWidth: 200 }}>
             <SectionLabel>Traveller</SectionLabel>
             <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(2rem,5vw,3rem)', fontWeight: 300, lineHeight: 1, marginBottom: '0.4rem' }}>@{profile.username}</h1>
-            {profile.bio && <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text-muted)', lineHeight: 1.8, marginBottom: '1rem' }}>{profile.bio}</p>}
+            {profile.bio && <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text-muted)', lineHeight: 1.8, marginBottom: '0.75rem' }}>{profile.bio}</p>}
+
+            {followData && (
+              <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '0.75rem' }}>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--text-muted)' }}>
+                  <span style={{ color: 'var(--text)', fontWeight: 500 }}>{followData.followerCount}</span> followers
+                </span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--text-muted)' }}>
+                  <span style={{ color: 'var(--text)', fontWeight: 500 }}>{followData.followingCount}</span> following
+                </span>
+              </div>
+            )}
+
             <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.58rem', color: 'var(--text-dim)', marginBottom: '1.25rem' }}>
               Joined {new Date(profile.joinedAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
             </p>
 
-            {/* Actions */}
-            {me && (
+            {/* Actions — only shown when we know it's not our own profile */}
+            {me && me.id !== profile.id && (
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 <button onClick={startMessage} disabled={messaging} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0.5rem 1.25rem', background: 'var(--aether-dim)', border: '0.5px solid rgba(168,155,255,0.4)', color: 'var(--aether)', borderRadius: '2px', cursor: 'none' }}>
                   {messaging ? '...' : '✉ Message'}
                 </button>
-                <Link href={`/market`} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0.5rem 1.25rem', background: 'transparent', border: '0.5px solid var(--border)', color: 'var(--text-dim)', borderRadius: '2px', textDecoration: 'none' }}>
+                <button onClick={toggleFollow} disabled={followLoading} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0.5rem 1.25rem', background: following ? 'rgba(168,155,255,0.1)' : 'transparent', border: `0.5px solid ${following ? 'var(--aether)' : 'var(--border)'}`, color: following ? 'var(--aether)' : 'var(--text-dim)', borderRadius: '2px', cursor: 'none' }}>
+                  {followLoading ? '...' : following ? '✓ Following' : '+ Follow'}
+                </button>
+                <Link href="/market" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0.5rem 1.25rem', background: 'transparent', border: '0.5px solid var(--border)', color: 'var(--text-dim)', borderRadius: '2px', textDecoration: 'none' }}>
                   💱 Trade rep
                 </Link>
               </div>
@@ -113,12 +179,12 @@ export default function PublicProfilePage() {
           </div>
 
           {/* Rep badge */}
-          <div style={{ border: '0.5px solid var(--border-bright)', borderRadius: '2px', padding: '1.1rem', background: 'var(--deep)', flexShrink: 0 }}>
+          <div style={{ border: '0.5px solid var(--border-bright)', borderRadius: '2px', padding: '1.1rem', background: 'var(--deep)', flexShrink: 0, minWidth: 140 }}>
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.54rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: '0.5rem' }}>Reputation</div>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '2.5rem', fontWeight: 300, color: 'var(--aether)', lineHeight: 1, marginBottom: '0.5rem' }}>{totalRep}</div>
             {rep && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                {Object.entries(REP_COLORS).map(([key, color]) => rep[key] > 0 && (
+                {Object.entries(REP_COLORS).map(([key, color]) => (rep[key] || 0) > 0 && (
                   <div key={key} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', color: 'var(--text-dim)', textTransform: 'capitalize' }}>{key}</span>
                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', color }}>{rep[key]}</span>
@@ -130,7 +196,7 @@ export default function PublicProfilePage() {
         </div>
 
         {/* Signals */}
-        <div style={{ marginBottom: '2rem' }}>
+        <div>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.58rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: '1rem' }}>
             Signals from @{profile.username}
           </div>

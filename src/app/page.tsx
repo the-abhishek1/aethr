@@ -38,11 +38,13 @@ export default function Home() {
       if (d.lore) setLiveStats({ users: d.lore.userCount, signals: d.lore.signalCount, discoveries: d.lore.discoveryCount })
     }).catch(() => {})
 
-    // Scroll reveal
+    // Scroll reveal — only animate if JS is running (content always visible without JS)
+    const revealEls = document.querySelectorAll('.reveal')
+    revealEls.forEach(el => el.classList.add('animate'))
     const obs = new IntersectionObserver(entries => {
       entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target) } })
-    }, { threshold: 0.08 })
-    document.querySelectorAll('.reveal').forEach(el => obs.observe(el))
+    }, { threshold: 0.05, rootMargin: '0px 0px -50px 0px' })
+    revealEls.forEach(el => obs.observe(el))
 
     // Rep bars
     const repObs = new IntersectionObserver(entries => {
@@ -58,14 +60,15 @@ export default function Home() {
     return () => { obs.disconnect(); repObs.disconnect() }
   }, [])
 
-  if (loading) return null
+  // Don't blank the page while loading — just redirect when ready
   if (user) return null
 
   return (
     <>
       <style>{`
-        .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.8s ease, transform 0.8s ease; }
-        .reveal.visible { opacity: 1; transform: translateY(0); }
+        .reveal { opacity: 1; transform: none; }
+        .reveal.animate { opacity: 0; transform: translateY(20px); transition: opacity 0.7s ease, transform 0.7s ease; }
+        .reveal.animate.visible { opacity: 1; transform: translateY(0); }
         .rep-fill { transition: width 1.5s cubic-bezier(0.16,1,0.3,1); }
         .feature-card:hover { background: var(--deep) !important; }
         .world-card-home:hover { background: var(--deep) !important; border-color: var(--border-bright) !important; }

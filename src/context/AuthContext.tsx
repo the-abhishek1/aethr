@@ -6,6 +6,7 @@ interface Reputation { wisdom: number; creativity: number; discovery: number; tr
 interface Presence { state: string; worldId: string | null }
 
 export interface AuthUser {
+  isAdmin: boolean
   id: string
   email: string
   username: string
@@ -32,9 +33,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refresh = useCallback(async () => {
     try {
-      const res = await fetch('/api/auth/me')
-      const data = await res.json()
-      setUser(data.user)
+      const [meRes, adminRes] = await Promise.all([
+        fetch('/api/auth/me'),
+        fetch('/api/auth/admin'),
+      ])
+      const meData    = await meRes.json()
+      const adminData = await adminRes.json()
+      if (meData.user) {
+        setUser({ ...meData.user, isAdmin: adminData.isAdmin === true })
+      } else {
+        setUser(null)
+      }
     } catch {
       setUser(null)
     } finally {
