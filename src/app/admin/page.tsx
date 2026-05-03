@@ -26,7 +26,7 @@ export default function AdminPage() {
     if (!user || !user.isAdmin) return
 
     fetch('/api/archive').then(r => r.json()).then(d => setStats(d.lore))
-    fetch('/api/search?q=a&type=users').then(r => r.json()).then(d => setUsers(d.results?.users || []))
+    fetch('/api/admin').then(r => r.json()).then(d => setUsers(d.users || []))
   }, [user])
 
   const createMonument = async () => {
@@ -88,17 +88,59 @@ export default function AdminPage() {
         )}
 
         {tab === 'users' && (
-          <div style={{ border: '0.5px solid var(--border)', borderRadius: '2px' }}>
-            {users.map((u: any) => (
-              <div key={u.id} style={{ padding: '0.9rem 1.25rem', borderBottom: '0.5px solid var(--border)', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--surface)', border: '0.5px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem' }}>{u.avatarEmoji}</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', color: 'var(--text)' }}>@{u.username}</div>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.56rem', color: 'var(--text-dim)' }}>{u.email || u.bio?.slice(0, 50)}</div>
-                </div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', color: 'var(--text-dim)' }}>Joined {new Date(u.joinedAt).toLocaleDateString()}</div>
+          <div>
+            {/* Summary */}
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', color: 'var(--text-dim)', marginBottom: '1rem' }}>
+              {users.length} total users
+            </div>
+
+            <div style={{ border: '0.5px solid var(--border)', borderRadius: '2px', overflow: 'hidden' }}>
+              {/* Table header */}
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1fr 1fr 1fr 1.2fr', gap: '0.5rem', padding: '0.6rem 1rem', borderBottom: '0.5px solid var(--border)', background: 'var(--deep)' }}>
+                {['User', 'Email', 'Signals', 'Followers', 'Rep', 'Joined'].map(h => (
+                  <div key={h} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.52rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>{h}</div>
+                ))}
               </div>
-            ))}
+
+              {users.length === 0 ? (
+                <div style={{ padding: '3rem', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text-dim)' }}>
+                  Loading users...
+                </div>
+              ) : users.map((u: any, i: number) => {
+                const totalRep = u.reputation
+                  ? Object.values(u.reputation).reduce((s: number, v: any) => s + (v || 0), 0)
+                  : 0
+                return (
+                  <div key={u.id} style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1fr 1fr 1fr 1.2fr', gap: '0.5rem', padding: '0.75rem 1rem', borderBottom: '0.5px solid var(--border)', background: i % 2 === 0 ? 'var(--void)' : 'transparent', alignItems: 'center', transition: 'background 0.15s' }}
+                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--deep)'}
+                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = i % 2 === 0 ? 'var(--void)' : 'transparent'}
+                  >
+                    {/* User */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--surface)', border: '0.5px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', flexShrink: 0 }}>{u.avatarEmoji}</div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontFamily: 'var(--font-display)', fontSize: '0.9rem', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>@{u.username}</div>
+                        {u.presence?.state && (
+                          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5rem', color: 'var(--aether)', opacity: 0.7 }}>{u.presence.state}</div>
+                        )}
+                      </div>
+                    </div>
+                    {/* Email */}
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email}</div>
+                    {/* Signals */}
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: '#1D9E75' }}>{u._count?.signals || 0}</div>
+                    {/* Followers */}
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: '#378ADD' }}>{u._count?.followers || 0}</div>
+                    {/* Rep */}
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--aether)' }}>{totalRep}</div>
+                    {/* Joined */}
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', color: 'var(--text-dim)' }}>
+                      {new Date(u.joinedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
 
