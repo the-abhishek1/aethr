@@ -80,17 +80,18 @@ export async function POST(req: NextRequest) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { action, mysteryId, answer } = await req.json()
+  const body = await req.json()
+  const { action, mysteryId, answer } = body
 
   if (action === 'join') {
     const existing = await prisma.mysteryExplorer.findUnique({
       where: { mysteryId_userId: { mysteryId, userId: session.id } }
     })
-    if (existing) return NextResponse.json({ error: 'Already exploring' }, { status: 400 })
+    // If already exploring, just return success — don't error
+    if (existing) return NextResponse.json({ joined: true, alreadyExploring: true })
 
     await prisma.mysteryExplorer.create({ data: { mysteryId, userId: session.id } })
 
-    // Boost discovery rep
     await prisma.reputation.upsert({
       where: { userId: session.id },
       update: { discovery: { increment: 1 } },
@@ -143,6 +144,47 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ correct: false })
+  }
+
+  if (action === 'create') {
+    const { title, description, answer, clues, difficulty } = body
+    if (!title || !description || !answer || !clues || clues.length < 2) {
+      return NextResponse.json({ error: 'Title, description, answer and 2+ clues required' }, { status: 400 })
+    }
+
+    const mystery = await prisma.mystery.create({
+      data: {
+        title: title.trim(),
+        description: description.trim(),
+        answer: answer.toLowerCase().trim(),
+        clues,
+        status: 'active',
+        expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days
+      }
+    })
+
+    // Notify all users about new mystery
+    const allUsers = await prisma.user.findMany({
+      where: { id: { not: session.id } }, select: { id: true }, take: 200
+    })
+    await prisma.notification.createMany({
+      data: allUsers.map((u: { id: string }) => ({
+        userId: u.id,
+        type: 'new_mystery',
+        title: '🌑 New mystery in The Void',
+        body: `@${session.username} created: "${title}"`,
+        link: '/the-void',
+      }))
+    })
+
+    // Boost creator's legacy rep
+    await prisma.reputation.upsert({
+      where: { userId: session.id },
+      update: { legacy: { increment: 5 } },
+      create: { userId: session.id, legacy: 5 },
+    })
+
+    return NextResponse.json({ mystery })
   }
 
   return NextResponse.json({ error: 'Invalid action' }, { status: 400 })

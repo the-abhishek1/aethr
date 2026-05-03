@@ -12,7 +12,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     include: {
       _count: { select: { members: true } },
       members: {
-        include: { user: { select: { id: true, username: true, avatarEmoji: true } } },
+        include: {
+          user: {
+            select: {
+              id: true, username: true, avatarEmoji: true, bio: true,
+              reputation: true,
+            }
+          }
+        },
         orderBy: { joinedAt: 'asc' },
       }
     }
@@ -21,7 +28,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (!faction) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const isMember = session
-    ? faction.members.some((m: { userId: string }) => m.userId === session.id)
+    ? faction.members.some(m => m.userId === session.id)
     : false
 
   return NextResponse.json({ faction, isMember })

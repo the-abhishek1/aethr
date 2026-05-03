@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import MediaPlayer from '@/components/ui/MediaPlayer'
 import { useRealtimeSignals } from '@/hooks/useRealtime'
 import SectionLabel from '@/components/ui/SectionLabel'
 import SignalComposer from '@/components/ui/SignalComposer'
@@ -22,7 +23,7 @@ export default function ForgePage() {
   const [tipSummary, setTipSummary] = useState<any[]>([])
   const [showCreate, setShowCreate] = useState(false)
   const [creating, setCreating] = useState(false)
-  const [form, setForm] = useState({ title: '', type: 'Music', description: '', isLive: false })
+  const [form, setForm] = useState({ title: '', type: 'Music', description: '', isLive: false, mediaUrl: '' })
   const [signals, setSignals] = useState<any[]>([])
 
   const loadTransmissions = useCallback(async () => {
@@ -58,11 +59,11 @@ export default function ForgePage() {
     const res = await fetch('/api/transmissions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, worldId: 'forge' }),
+      body: JSON.stringify({ ...form, worldId: 'forge', mediaUrl: form.mediaUrl || undefined }),
     })
     const data = await res.json()
     setCreating(false); setShowCreate(false)
-    setForm({ title: '', type: 'Music', description: '', isLive: false })
+    setForm({ title: '', type: 'Music', description: '', isLive: false, mediaUrl: '' })
     if (data.transmission) {
       setTransmissions(prev => [data.transmission, ...prev])
       setSelected(data.transmission)
@@ -136,6 +137,7 @@ export default function ForgePage() {
                 {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
               <input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Description (optional)" style={{ background: 'transparent', border: '0.5px solid var(--border-bright)', borderRadius: '2px', outline: 'none', padding: '0.65rem 0.9rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text)' }} />
+              <input value={form.mediaUrl} onChange={e => setForm(f => ({ ...f, mediaUrl: e.target.value }))} placeholder="Media URL — YouTube, SoundCloud, Spotify, Vimeo, or direct file link" style={{ background: 'transparent', border: '0.5px solid var(--border-bright)', borderRadius: '2px', outline: 'none', padding: '0.65rem 0.9rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text)' }} />
             </div>
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'none' }}>
@@ -220,7 +222,15 @@ export default function ForgePage() {
                   <div style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.2rem,3vw,1.6rem)', fontWeight: 400, color: 'var(--text)', marginBottom: '0.25rem' }}>{selected.title}</div>
                   <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>by @{selected.creator?.username}</div>
                   {selected.description && <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', color: 'var(--text-muted)', lineHeight: 1.7, marginBottom: '0.75rem' }}>{selected.description}</p>}
-                  {selected.isLive && (
+                  {/* Media player */}
+                  {selected.mediaUrl && (
+                    <div style={{ marginBottom: '0.5rem' }}>
+                      <MediaPlayer url={selected.mediaUrl} type={selected.type} title={selected.title} />
+                    </div>
+                  )}
+
+                  {/* Live indicator bar (only if live and no media URL) */}
+                  {selected.isLive && !selected.mediaUrl && (
                     <div style={{ height: 2, background: 'var(--border)', borderRadius: 1, marginBottom: '1rem', overflow: 'hidden' }}>
                       <div style={{ height: '100%', width: '60%', background: '#BA7517', borderRadius: 1, opacity: 0.7, animation: 'pulse-soft 2s ease-in-out infinite' }} />
                     </div>
