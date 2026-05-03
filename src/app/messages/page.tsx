@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
+import Link from 'next/link'
 import { useRealtimeMessages } from '@/hooks/useRealtime'
 import SectionLabel from '@/components/ui/SectionLabel'
 import { useAuth } from '@/context/AuthContext'
@@ -15,6 +16,8 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(true)
   const [newUserId, setNewUserId] = useState('')
   const [showNew, setShowNew] = useState(false)
+  const [typing, setTyping] = useState(false)
+  const typingTimer = useRef<any>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const loadConvs = useCallback(async () => {
@@ -52,6 +55,13 @@ export default function MessagesPage() {
     if (selected) loadThread(selected.user.id)
   }, [selected, loadThread])
 
+  const handleContentChange = (val: string) => {
+    setContent(val)
+    setTyping(true)
+    clearTimeout(typingTimer.current)
+    typingTimer.current = setTimeout(() => setTyping(false), 1500)
+  }
+
   const send = async () => {
     if (!content.trim() || !partner) return
     setSending(true)
@@ -70,11 +80,14 @@ export default function MessagesPage() {
   }
 
   const startNew = async () => {
-    if (!newUserId.trim()) return
-    const user2 = await fetch(`/api/search?q=${encodeURIComponent(newUserId)}&type=users`)
-    const data = await user2.json()
-    const found = data.results?.users?.[0]
-    if (!found) return
+    const name = newUserId.trim().replace('@', '')
+    if (!name) return
+    // Use profile PUT endpoint — works for any username length
+    const res = await fetch(`/api/profile?username=${encodeURIComponent(name)}`, { method: 'PUT' })
+    if (!res.ok) { alert('User not found'); return }
+    const data = await res.json()
+    const found = data.user
+    if (!found) { alert('User not found'); return }
     setPartner(found)
     setMessages([])
     setSelected({ user: found })
@@ -147,7 +160,7 @@ export default function MessagesPage() {
                 <div style={{ padding: '1rem 1.5rem', borderBottom: '0.5px solid var(--border)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                   <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--surface)', border: '0.5px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem' }}>{partner.avatarEmoji}</div>
                   <div>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: 'var(--text)' }}>@{partner.username}</div>
+                    <Link href={`/profile/${partner.username}`} style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: 'var(--text)', textDecoration: 'none' }}>@{partner.username} →</Link>
                     {partner.bio && <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.56rem', color: 'var(--text-dim)' }}>{partner.bio.slice(0, 60)}</div>}
                   </div>
                 </div>
@@ -172,9 +185,20 @@ export default function MessagesPage() {
                 </div>
 
                 {/* Input */}
-                <div style={{ padding: '1rem 1.5rem', borderTop: '0.5px solid var(--border)', display: 'flex', gap: '0.5rem' }}>
-                  <input value={content} onChange={e => setContent(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }} placeholder={`Message @${partner.username}...`} style={{ flex: 1, background: 'transparent', border: '0.5px solid var(--border-bright)', borderRadius: '2px', outline: 'none', padding: '0.7rem 1rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text)', transition: 'border-color 0.2s' }} onFocus={e => (e.target as HTMLInputElement).style.borderColor = 'var(--aether)'} onBlur={e => (e.target as HTMLInputElement).style.borderColor = 'var(--border-bright)'} />
-                  <button onClick={send} disabled={sending || !content.trim()} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0.7rem 1.25rem', background: content.trim() ? 'var(--aether)' : 'var(--aether-dim)', color: content.trim() ? 'var(--void)' : 'var(--aether)', border: 'none', borderRadius: '2px', cursor: 'none', whiteSpace: 'nowrap' }}>Send →</button>
+                <div style={{ padding: '0.75rem 1.5rem', borderTop: '0.5px solid var(--border)' }}>
+                  {/* Typing indicator */}
+                  {typing && partner && (
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.54rem', color: 'var(--text-dim)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <span style={{ display: 'flex', gap: '2px' }}>
+                        {[0,1,2].map(i => <span key={i} style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--text-dim)', display: 'block', animation: `pulse-soft 1s ${i * 0.15}s infinite` }} />)}
+                      </span>
+                      You are typing...
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <input value={content} onChange={e => handleContentChange(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }} placeholder={`Message @${partner.username}...`} style={{ flex: 1, background: 'transparent', border: '0.5px solid var(--border-bright)', borderRadius: '2px', outline: 'none', padding: '0.7rem 1rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text)', transition: 'border-color 0.2s' }} onFocus={e => (e.target as HTMLInputElement).style.borderColor = 'var(--aether)'} onBlur={e => (e.target as HTMLInputElement).style.borderColor = 'var(--border-bright)'} />
+                    <button onClick={send} disabled={sending || !content.trim()} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0.7rem 1.25rem', background: content.trim() ? 'var(--aether)' : 'var(--aether-dim)', color: content.trim() ? 'var(--void)' : 'var(--aether)', border: 'none', borderRadius: '2px', cursor: 'none', whiteSpace: 'nowrap' }}>Send →</button>
+                  </div>
                 </div>
               </>
             )}

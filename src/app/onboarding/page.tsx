@@ -44,6 +44,7 @@ export default function OnboardingPage() {
             <div>
               <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.65rem', letterSpacing:'0.22em', textTransform:'uppercase', color:'var(--aether)', marginBottom:'1.5rem' }}>Your signal</p>
               <h2 style={{ fontFamily:'var(--font-display)', fontSize:'clamp(2rem,6vw,4rem)', fontWeight:300, lineHeight:1.1, marginBottom:'2.5rem' }}>What shall the<br /><em style={{color:'var(--aether)'}}>galaxy call you?</em></h2>
+              <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.62rem', color:'var(--text-dim)', marginBottom:'1.5rem' }}>This becomes your bio — how the galaxy knows you.</p>
               <input value={name} onChange={e=>setName(e.target.value)} placeholder="Your name or alias..." style={{ width:'100%', background:'transparent', border:'none', borderBottom:'0.5px solid var(--border-bright)', outline:'none', padding:'1rem 0', fontFamily:'var(--font-display)', fontSize:'clamp(1.5rem,5vw,2rem)', fontWeight:300, color:'var(--text)' }} />
             </div>
           )}
@@ -94,7 +95,7 @@ export default function OnboardingPage() {
               </div>
             </div>
           )}
-          <button onClick={() => { if (step < steps.length-1) setStep(s=>s+1); else { fetch('/api/onboarding', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ personaType: persona, worldId: world, presenceState: presence }) }).finally(() => router.push('/dashboard')) } }} disabled={disabled} style={{ marginTop:'3rem', width:'100%', fontFamily:'var(--font-mono)', fontSize:'0.72rem', letterSpacing:'0.15em', textTransform:'uppercase', padding:'1rem', borderRadius:'2px', border:'none', background:'var(--aether)', color:'var(--void)', cursor:'none', opacity: disabled ? 0.3 : 1, transition:'opacity 0.2s' }}>
+          <button onClick={() => { if (step < steps.length-1) setStep(s=>s+1); else { fetch('/api/onboarding', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ personaType: persona, worldId: world, presenceState: presence, displayName: name.trim() }) }).finally(() => router.push('/dashboard')) } }} disabled={disabled} style={{ marginTop:'3rem', width:'100%', fontFamily:'var(--font-mono)', fontSize:'0.72rem', letterSpacing:'0.15em', textTransform:'uppercase', padding:'1rem', borderRadius:'2px', border:'none', background:'var(--aether)', color:'var(--void)', cursor:'none', opacity: disabled ? 0.3 : 1, transition:'opacity 0.2s' }}>
             {step === steps.length-1 ? 'Enter Aethr →' : 'Continue →'}
           </button>
         </div>

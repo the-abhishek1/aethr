@@ -3,7 +3,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-const VALID_EMOJIS = ['🌀', '🔥', '🔭', '⚔️', '💙']
+export const VALID_EMOJIS = [
+  '🌀','🔥','🔭','⚔️','💙',  // originals
+  '😂','🤯','❤️','👀','💀',   // fun/reactions
+  '🙌','😤','🫡','💯','✨',   // energy
+  '🤝','🌊','🎯','🧠','⚡',   // vibes
+]
 
 export async function POST(req: NextRequest) {
   const session = await getSession()
@@ -14,7 +19,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid reaction' }, { status: 400 })
   }
 
-  // Toggle: if already reacted with this emoji, remove it
   const existing = await prisma.signalReaction.findUnique({
     where: { signalId_userId_emoji: { signalId, userId: session.id, emoji } }
   })
@@ -28,7 +32,6 @@ export async function POST(req: NextRequest) {
     data: { signalId, userId: session.id, emoji }
   })
 
-  // Notify signal author
   const signal = await prisma.signal.findUnique({
     where: { id: signalId },
     select: { authorId: true, content: true }
@@ -43,7 +46,7 @@ export async function POST(req: NextRequest) {
         body: `on: "${signal.content.slice(0, 60)}"`,
         link: '/commons',
       }
-    }).catch(() => {}) // non-blocking
+    }).catch(() => {})
   }
 
   return NextResponse.json({ action: 'added', emoji })

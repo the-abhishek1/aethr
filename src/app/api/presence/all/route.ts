@@ -15,16 +15,12 @@ export async function GET() {
     take: 30,
   })
 
-  const users = presences.map((p: {
-  user: { id: string; username: string; avatarEmoji: string }
-  state: string
-  worldId: string | null
-}) => ({
-  id: p.user.id,
-  username: p.user.username,
-  avatarEmoji: p.user.avatarEmoji,
-  presence: { state: p.state, worldId: p.worldId },
-}))
+  const users = presences.map((p: any) => ({
+    id: p.user.id,
+    username: p.user.username,
+    avatarEmoji: p.user.avatarEmoji,
+    presence: { state: p.state, worldId: p.worldId },
+  }))
 
   return NextResponse.json({ users })
 }

@@ -15,6 +15,11 @@ const TYPE_ICON: Record<string, string> = {
   mystery_solved:    '🌑',
   rep_trade:         '💱',
   welcome:           '⚗️',
+  new_follower:      '👤',
+  new_mystery:       '🌑',
+  debate_vote:       '⚔️',
+  faction_invite:    '🏴',
+  milestone:         '🏛️',
 }
 
 export default function NotificationBell() {

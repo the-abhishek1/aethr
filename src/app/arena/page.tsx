@@ -14,6 +14,9 @@ export default function ArenaPage() {
   const [argContent, setArgContent] = useState('')
   const [argSide, setArgSide] = useState<'for' | 'against'>('for')
   const [posting, setPosting] = useState(false)
+  const [hotTake, setHotTake] = useState('')
+  const [postingHT, setPostingHT] = useState(false)
+  const [htPosted, setHtPosted] = useState(false)
 
   const loadDebates = useCallback(async () => {
     const res = await fetch('/api/debate?limit=20')
@@ -29,6 +32,25 @@ export default function ArenaPage() {
   }, [])
 
   useEffect(() => { loadDebates() }, [loadDebates])
+
+  const postHotTake = async () => {
+    if (!hotTake.trim()) return
+    setPostingHT(true)
+    const res = await fetch('/api/debate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: hotTake.trim(), description: '🔥 Hot take — vote and argue.', isHotTake: true }),
+    })
+    const data = await res.json()
+    setPostingHT(false)
+    if (data.debate) {
+      setDebates(prev => [data.debate, ...prev])
+      setHotTake('')
+      setHtPosted(true)
+      setTimeout(() => setHtPosted(false), 3000)
+      loadDebate(data.debate.id)
+    }
+  }
 
   const create = async () => {
     if (!form.title.trim()) return
@@ -101,6 +123,17 @@ export default function ArenaPage() {
             <button onClick={() => setShowCreate(!showCreate)} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase', padding: '0.6rem 1.5rem', background: showCreate ? 'rgba(216,90,48,0.12)' : 'transparent', border: `0.5px solid ${showCreate ? '#D85A30' : 'var(--border)'}`, color: showCreate ? '#D85A30' : 'var(--text-muted)', borderRadius: '2px', cursor: 'none' }}>{showCreate ? '× Cancel' : '+ Open a debate'}</button>
           )}
         </div>
+
+        {/* Hot Take bar — fast opinion polls */}
+        {user && (
+          <div style={{ padding: '0.75rem 1.5rem', borderBottom: '0.5px solid var(--border)', background: 'rgba(216,90,48,0.03)', display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#D85A30', letterSpacing: '0.1em', textTransform: 'uppercase', flexShrink: 0 }}>🔥 Hot take</span>
+            <input value={hotTake} onChange={e => setHotTake(e.target.value)} onKeyDown={e => e.key === 'Enter' && postHotTake()} placeholder="Drop a one-liner. Galaxy votes immediately." maxLength={120}
+              style={{ flex: 1, minWidth: 180, background: 'transparent', border: '0.5px solid rgba(216,90,48,0.3)', borderRadius: '2px', outline: 'none', padding: '0.5rem 0.75rem', fontFamily: 'var(--font-display)', fontSize: '0.9rem', color: 'var(--text)' }} />
+            <button onClick={postHotTake} disabled={postingHT || !hotTake.trim()} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '0.5rem 1.1rem', background: hotTake.trim() ? '#D85A30' : 'rgba(216,90,48,0.2)', color: hotTake.trim() ? 'white' : '#D85A30', border: 'none', borderRadius: '2px', cursor: 'none', flexShrink: 0 }}>{postingHT ? '...' : 'Fire →'}</button>
+            {htPosted && <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#1D9E75', animation: 'fadeIn 0.3s' }}>✓ Fired into the Arena</span>}
+          </div>
+        )}
 
         {/* Create debate */}
         {showCreate && (

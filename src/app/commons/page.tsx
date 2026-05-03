@@ -26,6 +26,8 @@ export default function CommonsPage() {
   const [showRoomInput, setShowRoomInput] = useState(false)
   const [selected, setSelected] = useState<string | null>(null)
   const [presenceUsers, setPresenceUsers] = useState<any[]>([])
+  const [trending, setTrending]           = useState<any[]>([])
+  const [galaxyFact, setGalaxyFact]       = useState('')
 
   const loadRooms = useCallback(async () => {
     const res = await fetch('/api/rooms?world=commons')
@@ -49,6 +51,14 @@ export default function CommonsPage() {
     loadSignals()
     // Load real presence users
     fetch('/api/presence/all').then(r => r.json()).then(d => setPresenceUsers(d.users || [])).catch(() => {})
+    // Load trending signals
+    fetch('/api/signals?world=commons&limit=50').then(r => r.json()).then(d => {
+      const scored = (d.signals || []).map((s: any) => ({...s, score: (s._count?.reactions || 0) * 2 + (s._count?.replies || 0) * 3}))
+      setTrending(scored.sort((a: any, b: any) => b.score - a.score).slice(0, 5))
+    }).catch(() => {})
+    // Fun galaxy fact
+    const facts = ['The Void has 3 active mysteries right now.','Signal reactions are live — someone just reacted.','The most-rippled discovery has 31 ripples.','4 factions are competing for galaxy dominance.','cipher_echo solved the Fibonacci Frequency in 1 attempt.']
+    setGalaxyFact(facts[Math.floor(Math.random() * facts.length)])
   }, [loadRooms, loadSignals])
 
   // Live realtime — new signals appear instantly
@@ -244,19 +254,40 @@ export default function CommonsPage() {
               )}
             </div>
 
-            {/* Ambient whispers */}
-            <div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.56rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: '0.75rem' }}>Ambient</div>
+            {/* Trending signals */}
+            {trending.length > 0 && (
+              <div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.56rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: '0.75rem' }}>🔥 Hot signals</div>
+                {trending.map((s: any) => (
+                  <div key={s.id} style={{ padding: '0.65rem 0', borderBottom: '0.5px solid var(--border)' }}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '0.85rem', color: 'var(--text)', lineHeight: 1.4, marginBottom: '0.2rem' }}>{s.content.slice(0, 60)}{s.content.length > 60 ? '…' : ''}</div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.52rem', color: 'var(--text-dim)' }}>@{s.author?.username} · {s._count?.reactions || 0} reactions</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Galaxy fact */}
+            {galaxyFact && (
+              <div style={{ padding: '0.85rem', border: '0.5px solid rgba(168,155,255,0.2)', borderRadius: '2px', background: 'rgba(168,155,255,0.04)' }}>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.52rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--aether)', marginBottom: '0.3rem', opacity: 0.7 }}>Galaxy pulse</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>{galaxyFact}</div>
+              </div>
+            )}
+
+            {/* Quick links */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.56rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: '0.35rem' }}>Explore</div>
               {[
-                { from: 'Lyra', msg: 'just started something new', time: '1m', color: '#BA7517' },
-                { from: 'Nova', msg: 'open to connect', time: '3m', color: '#a89bff' },
-                { from: 'Kael', msg: 'deep in thought', time: '8m', color: '#1D9E75' },
-              ].map((w, i) => (
-                <div key={i} style={{ padding: '0.65rem 0', borderBottom: '0.5px solid var(--border)' }}>
-                  <span style={{ color: w.color, fontFamily: 'var(--font-display)', fontSize: '0.9rem' }}>{w.from}</span>
-                  <span style={{ fontFamily: 'var(--font-display)', fontSize: '0.9rem', color: 'var(--text-muted)' }}> {w.msg}</span>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.54rem', color: 'var(--text-dim)', marginTop: '0.1rem' }}>{w.time} ago</div>
-                </div>
+                { label: '⚔️ Open debates', href: '/arena' },
+                { label: '🔭 Latest discoveries', href: '/the-deep' },
+                { label: '🌑 Active mysteries', href: '/the-void' },
+                { label: '🔥 The Forge', href: '/forge' },
+              ].map(l => (
+                <a key={l.href} href={l.href} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--text-dim)', textDecoration: 'none', padding: '0.35rem 0.6rem', border: '0.5px solid var(--border)', borderRadius: '2px', transition: 'all 0.15s' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--aether)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(168,155,255,0.3)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-dim)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}
+                >{l.label}</a>
               ))}
             </div>
           </div>

@@ -6,7 +6,7 @@ export async function GET() {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000)
 
   const [signals, tips, debates, discoveries, factions, mysteries] = await Promise.all([
-    prisma.signal.findMany({ where: { createdAt: { gte: since } }, orderBy: { createdAt: 'desc' }, take: 5, include: { author: { select: { username: true, avatarEmoji: true } } } }),
+    prisma.signal.findMany({ where: { createdAt: { gte: since } }, orderBy: { createdAt: 'desc' }, take: 10, include: { author: { select: { username: true, avatarEmoji: true } }, _count: { select: { reactions: true, replies: true } } } }),
     prisma.tip.findMany({ where: { createdAt: { gte: since } }, orderBy: { createdAt: 'desc' }, take: 10, include: { fromUser: { select: { username: true } }, toUser: { select: { username: true, avatarEmoji: true } } } }),
     prisma.debate.findMany({ where: { createdAt: { gte: since } }, orderBy: { createdAt: 'desc' }, take: 3, include: { creator: { select: { username: true } }, _count: { select: { arguments: true, votes: true } } } }),
     prisma.discovery.findMany({ where: { createdAt: { gte: since } }, orderBy: { ripples: 'desc' }, take: 3, include: { author: { select: { username: true, avatarEmoji: true } } } }),
@@ -16,7 +16,11 @@ export async function GET() {
 
   const segments: any[] = []
 
-  if (signals.length > 0) segments.push({ type: 'signals', icon: '📡', title: 'Signals sent today', world: 'The Commons', color: '#1D9E75', items: signals.map((s: any) => ({ text: `${s.author.avatarEmoji} @${s.author.username}: "${s.content.slice(0, 80)}${s.content.length > 80 ? '...' : ''}"`, mood: s.mood })) })
+  if (signals.length > 0) {
+    // Sort by engagement, pick top 5
+    const topSignals = [...signals].sort((a: any, b: any) => (b._count.reactions * 2 + b._count.replies * 3) - (a._count.reactions * 2 + a._count.replies * 3)).slice(0, 5)
+    segments.push({ type: 'signals', icon: '📡', title: 'Hot signals today', world: 'The Commons', color: '#1D9E75', items: topSignals.map((s: any) => ({ text: `${s.author.avatarEmoji} @${s.author.username}: "${s.content.slice(0, 80)}${s.content.length > 80 ? '...' : ''}"`, mood: s.mood, mediaUrl: s.mediaUrl, stats: s._count.reactions > 0 ? `${s._count.reactions} reactions · ${s._count.replies} replies` : null })) })
+  }
   if (discoveries.length > 0) segments.push({ type: 'discoveries', icon: '🔭', title: 'Discoveries that rippled', world: 'The Deep', color: '#378ADD', items: discoveries.map((d: any) => ({ text: `${d.author.avatarEmoji} @${d.author.username} discovered: "${d.title}"`, ripples: d.ripples })) })
   if (debates.length > 0) segments.push({ type: 'debates', icon: '⚔️', title: 'Debates in The Arena', world: 'The Arena', color: '#D85A30', items: debates.map((d: any) => ({ text: `@${d.creator.username} opened: "${d.title}"`, stats: `${d._count.arguments} arguments · ${d._count.votes} votes` })) })
   if (tips.length > 0) {

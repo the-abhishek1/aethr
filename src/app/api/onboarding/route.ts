@@ -7,7 +7,12 @@ export async function POST(req: NextRequest) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { personaType, worldId, presenceState } = await req.json()
+  const { personaType, worldId, presenceState, displayName } = await req.json()
+
+  // Save displayName as bio if provided
+  if (displayName) {
+    await prisma.user.update({ where: { id: session.id }, data: { bio: displayName } })
+  }
 
   // Deactivate existing personas
   await prisma.persona.updateMany({

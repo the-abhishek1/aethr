@@ -1,10 +1,12 @@
 'use client'
+import MediaPlayer from './MediaPlayer'
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { subscribeToReactions } from '@/lib/realtime'
 import Link from 'next/link'
 
-const REACTIONS = ['🌀','🔥','🔭','⚔️','💙']
+const ALL_REACTIONS = ['🌀','🔥','🔭','⚔️','💙','😂','🤯','❤️','👀','💀','🙌','😤','🫡','💯','✨','🤝','🌊','🎯','🧠','⚡']
+const DEFAULT_REACTIONS = ALL_REACTIONS.slice(0, 5)
 const MOOD_COLORS: Record<string, string> = {
   curious:'#378ADD', creating:'#BA7517', reflecting:'#a89bff',
   energized:'#1D9E75', challenged:'#D85A30', wandering:'#d4b896',
@@ -29,6 +31,7 @@ export default function SignalCard({ signal, showReplies = true }: { signal: any
     return mine
   })
   const [toggling, setToggling]         = useState<string | null>(null)
+  const [showAllRx, setShowAllRx]       = useState(false)
 
   // Replies state
   const [expanded, setExpanded]         = useState(false)
@@ -162,7 +165,7 @@ export default function SignalCard({ signal, showReplies = true }: { signal: any
           {/* Reactions + actions */}
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.6rem', flexWrap: 'wrap' }}>
             {/* Emoji buttons */}
-            {REACTIONS.map(emoji => {
+            {(showAllRx ? ALL_REACTIONS : DEFAULT_REACTIONS).map(emoji => {
               const count   = reactionMap[emoji] || 0
               const active  = myReactions.has(emoji)
               const loading = toggling === emoji
@@ -176,6 +179,13 @@ export default function SignalCard({ signal, showReplies = true }: { signal: any
                 </button>
               )
             })}
+
+            {/* Show more reactions */}
+            {user && (
+              <button onClick={() => setShowAllRx(s => !s)} title={showAllRx ? 'Show less' : 'More reactions'} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 22, borderRadius: '99px', border: `0.5px solid ${showAllRx ? 'var(--aether)' : 'var(--border)'}`, background: showAllRx ? 'var(--aether-dim)' : 'transparent', cursor: 'none', fontSize: '0.7rem', color: showAllRx ? 'var(--aether)' : 'var(--text-dim)', transition: 'all 0.15s' }}>
+                {showAllRx ? '−' : '+'}
+              </button>
+            )}
 
             {/* Reply toggle */}
             {showReplies && (

@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import SectionLabel from '@/components/ui/SectionLabel'
 import { useAuth } from '@/context/AuthContext'
+import Link from 'next/link'
 
 const REP_DIMS = [
   { key: 'wisdom',     color: '#a89bff', icon: '🧠' },
@@ -118,7 +119,7 @@ export default function MarketPage() {
                 ) : data?.leaderboard?.map((r: any, i: number) => {
                   const total = REP_DIMS.reduce((sum, d) => sum + (r[d.key] || 0), 0)
                   return (
-                    <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '40px 1fr repeat(6, 60px) 70px', gap: '0.5rem', padding: '0.9rem 1.25rem', borderBottom: '0.5px solid var(--border)', background: i % 2 === 0 ? 'var(--void)' : 'transparent', alignItems: 'center', transition: 'background 0.15s' }}
+                    <Link key={r.id} href={`/profile/${r.user?.username}`} style={{ display: 'grid', gridTemplateColumns: '40px 1fr repeat(6, 60px) 70px', gap: '0.5rem', padding: '0.9rem 1.25rem', borderBottom: '0.5px solid var(--border)', background: i % 2 === 0 ? 'var(--void)' : 'transparent', alignItems: 'center', transition: 'background 0.15s', textDecoration: 'none' }}
                       onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--deep)'}
                       onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = i % 2 === 0 ? 'var(--void)' : 'transparent'}
                     >
@@ -133,7 +134,7 @@ export default function MarketPage() {
                         <div key={d.key} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: r[d.key] > 0 ? d.color : 'var(--text-dim)', textAlign: 'center' }}>{r[d.key] || 0}</div>
                       ))}
                       <div style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', color: 'var(--aether)', textAlign: 'right' }}>{total}</div>
-                    </div>
+                    </Link>
                   )
                 })}
               </div>

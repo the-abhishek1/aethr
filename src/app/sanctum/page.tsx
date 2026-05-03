@@ -15,6 +15,7 @@ export default function SanctumPage() {
   const [insight, setInsight] = useState('')
   const [asking, setAsking] = useState(false)
   const [oracleOpen, setOracleOpen] = useState(false)
+  const [oracleHistory, setOracleHistory] = useState<{q: string; a: string}[]>([])
   const [deleting, setDeleting] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -53,14 +54,19 @@ export default function SanctumPage() {
   }
 
   const askOracle = async () => {
+    if (!question.trim()) return
     setAsking(true); setInsight('')
+    const q = question.trim()
     const res = await fetch('/api/oracle', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question }),
+      body: JSON.stringify({ question: q }),
     })
     const data = await res.json()
-    setInsight(data.insight || '')
+    const answer = data.insight || ''
+    setInsight(answer)
+    setOracleHistory(prev => [{ q, a: answer }, ...prev].slice(0, 10))
+    setQuestion('')
     setAsking(false)
   }
 

@@ -11,7 +11,7 @@ export default function TheDeepPage() {
   const [loading, setLoading] = useState(true)
   const [activeTag, setActiveTag] = useState('')
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ title: '', content: '', tags: [] as string[] })
+  const [form, setForm] = useState({ title: '', content: '', tags: [] as string[], mediaUrl: '' })
   const [posting, setPosting] = useState(false)
   const [rippling, setRippling] = useState<string | null>(null)
 
@@ -31,12 +31,12 @@ export default function TheDeepPage() {
     const res = await fetch('/api/discoveries', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
+      body: JSON.stringify({ ...form, mediaUrl: form.mediaUrl || undefined }),
     })
     const data = await res.json()
     if (data.discovery) {
       setDiscoveries(prev => [data.discovery, ...prev])
-      setForm({ title: '', content: '', tags: [] })
+      setForm({ title: '', content: '', tags: [], mediaUrl: '' })
       setShowForm(false)
     }
     setPosting(false)
@@ -92,6 +92,7 @@ export default function TheDeepPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '0.75rem' }}>
               <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="What did you discover?" style={{ background: 'transparent', border: '0.5px solid var(--border-bright)', borderRadius: '2px', outline: 'none', padding: '0.75rem 1rem', fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: 'var(--text)' }} />
               <textarea value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))} placeholder="Explain your discovery. What did you find? Why does it matter? What does it connect to?" rows={4} style={{ background: 'transparent', border: '0.5px solid var(--border-bright)', borderRadius: '2px', outline: 'none', padding: '0.75rem 1rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text)', resize: 'vertical', lineHeight: 1.7 }} />
+              <input value={form.mediaUrl} onChange={e => setForm(f => ({ ...f, mediaUrl: e.target.value }))} placeholder="Image URL (optional) — visualize your discovery" style={{ background: 'transparent', border: '0.5px solid var(--border)', borderRadius: '2px', outline: 'none', padding: '0.65rem 1rem', fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text)' }} />
             </div>
             <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
               {TAGS.map(t => (
@@ -156,6 +157,11 @@ export default function TheDeepPage() {
                     </div>
 
                     <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.1rem,2.5vw,1.4rem)', fontWeight: 400, color: 'var(--text)', marginBottom: '0.75rem', lineHeight: 1.3 }}>{d.title}</h3>
+                    {d.mediaUrl && d.mediaUrl.match(/\.(jpg|jpeg|png|gif|webp)(\?|$)/i) && (
+                      <div style={{ marginBottom: '1rem', borderRadius: '4px', overflow: 'hidden', border: '0.5px solid var(--border)' }}>
+                        <img src={d.mediaUrl} alt={d.title} style={{ width: '100%', maxHeight: 320, objectFit: 'cover', display: 'block' }} loading="lazy" />
+                      </div>
+                    )}
                     <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', color: 'var(--text-muted)', lineHeight: 1.9, marginBottom: '1rem' }}>{d.content}</p>
 
                     {/* Tags */}
