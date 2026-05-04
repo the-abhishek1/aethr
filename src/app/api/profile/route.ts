@@ -13,6 +13,9 @@ export async function GET() {
       personas: true,
       reputation: true,
       presence: true,
+      _count: {
+        select: { signals: true, discoveries: true, followers: true, following: true }
+      },
       roomMembers: {
         include: {
           room: {
@@ -31,10 +34,15 @@ export async function GET() {
 
   // Get recent signals as timeline
   const signals = await prisma.signal.findMany({
-    where: { authorId: session.id },
-    take: 10,
+    where: { authorId: session.id, parentId: null },
+    take: 15,
     orderBy: { createdAt: 'desc' },
-    include: { persona: { select: { name: true } } }
+    include: {
+      author:    { select: { id: true, username: true, avatarEmoji: true } },
+      persona:   { select: { name: true, type: true } },
+      _count:    { select: { replies: true, reactions: true } },
+      reactions: { select: { emoji: true, userId: true } },
+    }
   })
 
   return NextResponse.json({ user, signals })

@@ -10,6 +10,7 @@ const PRIVATE = [
   '/onboarding',
   '/admin',
   '/settings',
+  '/notifications',
 ]
 
 // Pages that redirect logged-in users away (auth pages)

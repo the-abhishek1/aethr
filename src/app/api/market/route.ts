@@ -8,19 +8,20 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   // Leaderboard across all rep dimensions
-  const leaderboard = await prisma.reputation.findMany({
-    orderBy: [
-      { wisdom: 'desc' },
-      { creativity: 'desc' },
-      { discovery: 'desc' },
-    ],
-    take: 20,
+  const allRep = await prisma.reputation.findMany({
     include: {
-      user: {
-        select: { id: true, username: true, avatarEmoji: true, bio: true }
-      }
+      user: { select: { id: true, username: true, avatarEmoji: true, bio: true } }
     }
   })
+
+  // Sort by total rep across all 6 dimensions
+  const leaderboard = allRep
+    .map((r: any) => ({
+      ...r,
+      _total: (r.wisdom||0)+(r.creativity||0)+(r.discovery||0)+(r.trust||0)+(r.debate||0)+(r.legacy||0)
+    }))
+    .sort((a: any, b: any) => b._total - a._total)
+    .slice(0, 20)
 
   // Recent trades
   const trades = await prisma.repTrade.findMany({

@@ -71,9 +71,10 @@ main { flex: 1; position: relative; z-index: 10; }
 .page { padding: var(--section-py) var(--page-px); }
 .page-top { padding-top: calc(var(--section-py) + 4rem); padding-bottom: var(--section-py); padding-left: var(--page-px); padding-right: var(--page-px); }
 
-/* Reveal animation */
-.reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.8s ease, transform 0.8s ease; }
-.reveal.visible { opacity: 1; transform: translateY(0); }
+/* Reveal animation — progressive enhancement, never hides by default */
+.reveal { opacity: 1; transform: none; }
+.reveal.animate { opacity: 0; transform: translateY(20px); transition: opacity 0.7s ease, transform 0.7s ease; }
+.reveal.animate.visible { opacity: 1; transform: translateY(0); }
 
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(20px); }

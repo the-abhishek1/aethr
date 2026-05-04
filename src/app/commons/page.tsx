@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import SectionLabel from '@/components/ui/SectionLabel'
+import WeeklyChallenge from '@/components/ui/WeeklyChallenge'
 import SignalComposer from '@/components/ui/SignalComposer'
 import SignalCard from '@/components/ui/SignalCard'
 import { SignalSkeleton } from '@/components/ui/Skeleton'
@@ -253,6 +254,9 @@ export default function CommonsPage() {
                 <button onClick={() => setShowRoomInput(true)} style={{ width: '100%', marginTop: '0.75rem', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0.6rem', border: '0.5px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', borderRadius: '2px', cursor: 'none' }}>+ Create memory room</button>
               )}
             </div>
+
+            {/* Weekly challenge */}
+            <WeeklyChallenge compact />
 
             {/* Trending signals */}
             {trending.length > 0 && (

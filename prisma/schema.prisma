@@ -28,6 +28,7 @@ model User {
   debatesCreated   Debate[]          @relation("DebateCreator")
   debateVotes      DebateVote[]
   debateArguments  DebateArgument[]
+  argumentVotes    ArgumentVote[]
   notifications    Notification[]
   discoveries      Discovery[]
   messagesSent     Message[]         @relation("MessagesSent")
@@ -40,6 +41,7 @@ model User {
   signalReactions  SignalReaction[]
   following        Follow[]          @relation("Following")
   followers        Follow[]          @relation("Followers")
+  passwordResetTokens PasswordResetToken[]
 
   @@map("users")
 }
@@ -235,12 +237,27 @@ model DebateArgument {
   authorId  String
   side      String
   content   String
+  upvotes   Int      @default(0)
   createdAt DateTime @default(now())
 
-  debate Debate @relation(fields: [debateId], references: [id], onDelete: Cascade)
-  author User   @relation(fields: [authorId], references: [id])
+  debate    Debate              @relation(fields: [debateId], references: [id], onDelete: Cascade)
+  author    User                @relation(fields: [authorId], references: [id])
+  argVotes  ArgumentVote[]
 
   @@map("debate_arguments")
+}
+
+model ArgumentVote {
+  id         String   @id @default(cuid())
+  argumentId String
+  userId     String
+  createdAt  DateTime @default(now())
+
+  argument DebateArgument @relation(fields: [argumentId], references: [id], onDelete: Cascade)
+  user     User           @relation(fields: [userId],     references: [id], onDelete: Cascade)
+
+  @@unique([argumentId, userId])
+  @@map("argument_votes")
 }
 
 model DebateVote {
@@ -411,4 +428,17 @@ model Follow {
 
   @@unique([followerId, followingId])
   @@map("follows")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_reset_tokens")
 }

@@ -38,3 +38,13 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
   return NextResponse.json({ discovery })
 }
+
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const discovery = await prisma.discovery.findUnique({
+    where: { id },
+    include: { author: { select: { id: true, username: true, avatarEmoji: true, bio: true } } }
+  })
+  if (!discovery) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  return NextResponse.json({ discovery })
+}

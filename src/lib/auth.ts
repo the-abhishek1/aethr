@@ -110,10 +110,19 @@ export async function registerUser(email: string, username: string, password: st
   return user
 }
 
-// Sign in user
-export async function signInUser(email: string, password: string) {
-  const user = await prisma.user.findUnique({ where: { email } })
-  if (!user) throw new Error('No account found with that email')
+// Sign in user — accepts email OR username
+export async function signInUser(emailOrUsername: string, password: string) {
+  const isEmail = emailOrUsername.includes('@') && emailOrUsername.includes('.')
+  const user = isEmail
+    ? await prisma.user.findUnique({ where: { email: emailOrUsername } })
+    : await prisma.user.findUnique({ where: { username: emailOrUsername } })
+
+  if (!user) {
+    throw new Error(isEmail
+      ? 'No account found with that email'
+      : 'No account found with that username'
+    )
+  }
 
   const valid = await verifyPassword(password, user.passwordHash)
   if (!valid) throw new Error('Incorrect password')

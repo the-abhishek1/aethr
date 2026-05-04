@@ -26,37 +26,24 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ notifications, unreadCount })
 }
 
-export async function PATCH(req: NextRequest) {
+export async function PATCH(request: Request) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { ids, all } = await req.json()
+  let id: string | undefined
+  try { const b = await request.json(); id = b.id } catch {}
 
-  if (all) {
+  if (id) {
     await prisma.notification.updateMany({
-      where: { userId: session.id, read: false },
+      where: { id, userId: session.id },
       data: { read: true },
     })
-  } else if (ids?.length) {
+  } else {
     await prisma.notification.updateMany({
-      where: { userId: session.id, id: { in: ids } },
+      where: { userId: session.id, read: false },
       data: { read: true },
     })
   }
 
   return NextResponse.json({ success: true })
-}
-
-// Internal helper to create a notification (called from other API routes)
-export async function POST(req: NextRequest) {
-  const session = await getSession()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const { userId, type, title, body, link } = await req.json()
-
-  const notification = await prisma.notification.create({
-    data: { userId, type, title, body, link }
-  })
-
-  return NextResponse.json({ notification })
 }

@@ -1,12 +1,14 @@
 'use client'
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useRealtimeMessages } from '@/hooks/useRealtime'
 import SectionLabel from '@/components/ui/SectionLabel'
 import { useAuth } from '@/context/AuthContext'
 
-export default function MessagesPage() {
+function MessagesContent() {
   const { user } = useAuth()
+  const searchParams = useSearchParams()
   const [conversations, setConversations] = useState<any[]>([])
   const [selected, setSelected] = useState<any>(null)
   const [messages, setMessages] = useState<any[]>([])
@@ -26,6 +28,31 @@ export default function MessagesPage() {
     setConversations(data.conversations || [])
     setLoading(false)
   }, [])
+
+  // Auto-open conversation from ?username= param (from profile page Message button)
+  useEffect(() => {
+    const targetUsername = searchParams.get('username')
+    if (!targetUsername || loading) return
+    // Look for existing conversation
+    const existing = conversations.find((c: any) =>
+      c.user.username?.toLowerCase() === targetUsername.toLowerCase()
+    )
+    if (existing) {
+      setSelected(existing)
+      return
+    }
+    // Look up by username and open new thread
+    fetch(`/api/profile?username=${encodeURIComponent(targetUsername)}`, { method: 'PUT' })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        const found = data?.user
+        if (found) {
+          setPartner(found)
+          setMessages([])
+          setSelected({ user: found })
+        }
+      }).catch(() => {})
+  }, [searchParams, loading, conversations]) // eslint-disable-line
 
   const loadThread = useCallback(async (userId: string) => {
     const res = await fetch(`/api/messages/${userId}`)
@@ -206,5 +233,13 @@ export default function MessagesPage() {
         </div>
       </div>
     </>
+  )
+}
+
+export default function MessagesPage() {
+  return (
+    <Suspense fallback={null}>
+      <MessagesContent />
+    </Suspense>
   )
 }

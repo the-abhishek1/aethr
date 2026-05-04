@@ -32,6 +32,11 @@ export default function SignalCard({ signal, showReplies = true }: { signal: any
   })
   const [toggling, setToggling]         = useState<string | null>(null)
   const [showAllRx, setShowAllRx]       = useState(false)
+  const [deleted, setDeleted]           = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [editing, setEditing]           = useState(false)
+  const [editContent, setEditContent]   = useState(signal.content)
+  const [saving, setSaving]             = useState(false)
 
   // Replies state
   const [expanded, setExpanded]         = useState(false)
@@ -90,6 +95,28 @@ export default function SignalCard({ signal, showReplies = true }: { signal: any
     setToggling(null)
   }
 
+  const saveEdit = async () => {
+    if (!editContent.trim() || editContent === signal.content) { setEditing(false); return }
+    setSaving(true)
+    const res = await fetch(`/api/signals/${signal.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: editContent.trim() }),
+    })
+    const data = await res.json()
+    if (data.signal) {
+      // Update local content without full reload
+      signal.content = data.signal.content
+    }
+    setSaving(false)
+    setEditing(false)
+  }
+
+  const deleteSignal = async () => {
+    await fetch(`/api/signals/${signal.id}`, { method: 'DELETE' })
+    setDeleted(true)
+  }
+
   const loadReplies = useCallback(async () => {
     if (expanded) { setExpanded(false); return }
     setLoadingReplies(true)
@@ -116,6 +143,21 @@ export default function SignalCard({ signal, showReplies = true }: { signal: any
     setPosting(false)
   }
 
+  if (deleted) return null
+
+  // Render content with clickable @mentions
+  function renderContent(text: string) {
+    const parts = text.split(/(@[a-zA-Z0-9_]+)/g)
+    return parts.map((part, i) =>
+      /^@[a-zA-Z0-9_]+$/.test(part)
+        ? <a key={i} href={`/profile/${part.slice(1)}`} style={{ color: 'var(--aether)', textDecoration: 'none', fontWeight: 500 }}
+            onMouseEnter={e => (e.currentTarget as HTMLElement).style.textDecoration = 'underline'}
+            onMouseLeave={e => (e.currentTarget as HTMLElement).style.textDecoration = 'none'}
+          >{part}</a>
+        : part
+    )
+  }
+
   const moodColor = signal.mood ? (MOOD_COLORS[signal.mood] || 'var(--text-dim)') : null
   const isVideo   = signal.mediaUrl && (signal.mediaUrl.includes('.mp4') || signal.mediaUrl.includes('.webm'))
 
@@ -139,6 +181,22 @@ export default function SignalCard({ signal, showReplies = true }: { signal: any
             {signal.mood && (
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.54rem', color: moodColor || 'var(--text-dim)', padding: '0.1rem 0.45rem', border: `0.5px solid ${moodColor || 'var(--border)'}44`, borderRadius: '99px' }}>{signal.mood}</span>
             )}
+            {/* Delete — own signals only */}
+            {user && user.id === signal.author?.id && (
+              <span style={{ marginLeft: 'auto' }}>
+                {confirmDelete ? (
+                  <span style={{ display: 'flex', gap: '0.4rem' }}>
+                    <button onClick={deleteSignal} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5rem', color: '#D85A30', background: 'none', border: 'none', cursor: 'none', padding: 0 }}>Delete</button>
+                    <button onClick={() => setConfirmDelete(false)} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5rem', color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'none', padding: 0 }}>Cancel</button>
+                  </span>
+                ) : editing ? null : (
+                  <span style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button onClick={() => { setEditing(true); setEditContent(signal.content) }} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5rem', color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'none', padding: 0, opacity: 0.5 }}>edit</button>
+                    <button onClick={() => setConfirmDelete(true)} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5rem', color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'none', padding: 0, opacity: 0.4 }}>···</button>
+                  </span>
+                )}
+              </span>
+            )}
             <Link href={`/signals/${signal.id}`} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.52rem', color: 'var(--text-dim)', textDecoration: 'none', transition: 'color 0.15s' }}
               onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = 'var(--aether)'}
               onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'var(--text-dim)'}
@@ -148,7 +206,19 @@ export default function SignalCard({ signal, showReplies = true }: { signal: any
           </div>
 
           {/* Content */}
-          <p style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', color: 'var(--text)', lineHeight: 1.6, marginBottom: signal.mediaUrl ? '0.75rem' : 0 }}>{signal.content}</p>
+          {editing ? (
+            <div style={{ marginBottom: '0.75rem' }}>
+              <textarea value={editContent} onChange={e => setEditContent(e.target.value)} autoFocus rows={3} onKeyDown={e => { if (e.key === 'Escape') { setEditing(false); setEditContent(signal.content) } if (e.key === 'Enter' && e.metaKey) saveEdit() }}
+                style={{ width: '100%', background: 'var(--deep)', border: '0.5px solid var(--aether)', borderRadius: '2px', outline: 'none', padding: '0.6rem 0.75rem', fontFamily: 'var(--font-display)', fontSize: '1rem', color: 'var(--text)', resize: 'vertical', lineHeight: 1.6, minHeight: 80 }} />
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.35rem' }}>
+                <button onClick={saveEdit} disabled={saving} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.56rem', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '0.3rem 0.85rem', background: 'var(--aether)', color: 'var(--void)', border: 'none', borderRadius: '2px', cursor: 'none' }}>{saving ? '...' : 'Save'}</button>
+                <button onClick={() => { setEditing(false); setEditContent(signal.content) }} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.56rem', padding: '0.3rem 0.7rem', background: 'transparent', color: 'var(--text-dim)', border: '0.5px solid var(--border)', borderRadius: '2px', cursor: 'none' }}>Cancel</button>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.52rem', color: 'var(--text-dim)', alignSelf: 'center' }}>⌘↵ to save · esc to cancel</span>
+              </div>
+            </div>
+          ) : (
+            <p style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', color: 'var(--text)', lineHeight: 1.6, marginBottom: signal.mediaUrl ? '0.75rem' : 0 }}>{renderContent(signal.content)}</p>
+          )}
 
           {/* Media */}
           {signal.mediaUrl && (
@@ -195,7 +265,7 @@ export default function SignalCard({ signal, showReplies = true }: { signal: any
                   {loadingReplies ? '...' : `↩ ${replyCount > 0 ? replyCount : ''} ${replyCount === 1 ? 'reply' : 'replies'}`}
                 </button>
                 {user && (
-                  <button onClick={() => setReplying(r => !r)} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.56rem', color: replying ? 'var(--aether)' : 'var(--text-dim)', background: 'none', border: 'none', cursor: 'none', transition: 'color 0.15s', padding: 0 }}>
+                  <button onClick={() => { const author = signal.author?.username; setReplyContent(author && !replying ? `@${author} ` : ''); setReplying(r => !r) }} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.56rem', color: replying ? 'var(--aether)' : 'var(--text-dim)', background: 'none', border: 'none', cursor: 'none', transition: 'color 0.15s', padding: 0 }}>
                     {replying ? '× cancel' : '+ reply'}
                   </button>
                 )}

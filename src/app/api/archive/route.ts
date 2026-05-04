@@ -25,11 +25,17 @@ export async function GET(req: NextRequest) {
   ])
 
   // Top contributors
-  const topByRep = await prisma.reputation.findMany({
-    orderBy: [{ wisdom: 'desc' }, { creativity: 'desc' }],
-    take: 5,
+  // Fetch all rep, sort by total client-side (Prisma can't sum computed fields)
+  const allRep = await prisma.reputation.findMany({
     include: { user: { select: { username: true, avatarEmoji: true } } }
   })
+  const topByRep = allRep
+    .map((r: any) => ({
+      ...r,
+      _total: (r.wisdom||0)+(r.creativity||0)+(r.discovery||0)+(r.trust||0)+(r.debate||0)+(r.legacy||0)
+    }))
+    .sort((a: any, b: any) => b._total - a._total)
+    .slice(0, 10)
 
   // Most rippled discoveries
   const topDiscoveries = await prisma.discovery.findMany({

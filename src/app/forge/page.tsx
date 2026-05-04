@@ -25,6 +25,9 @@ export default function ForgePage() {
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState({ title: '', type: 'Music', description: '', isLive: false, mediaUrl: '' })
   const [signals, setSignals] = useState<any[]>([])
+  const [txComment, setTxComment] = useState('')
+  const [txComments, setTxComments] = useState<any[]>([])
+  const [postingTxComment, setPostingTxComment] = useState(false)
 
   const loadTransmissions = useCallback(async () => {
     const url = tab === 'live' ? '/api/transmissions?world=forge&live=true' : '/api/transmissions?world=forge&limit=30'
@@ -51,6 +54,10 @@ export default function ForgePage() {
     fetch(`/api/tips?transmissionId=${selected.id}`)
       .then(r => r.json())
       .then(d => setTipSummary(d.summary || []))
+    // Load comments for this transmission
+    fetch(`/api/signals?worldId=forge&limit=50`)
+      .then(r => r.json())
+      .then(d => setTxComments((d.signals || []).filter((s: any) => s.content?.includes(`[tx:${selected.id}]`))))
   }, [selected])
 
   const create = async () => {
@@ -81,6 +88,22 @@ export default function ForgePage() {
       setTransmissions(prev => prev.map(t => t.id === tx.id ? data.transmission : t))
       if (selected?.id === tx.id) setSelected(data.transmission)
     }
+  }
+
+  const postTxComment = async () => {
+    if (!txComment.trim() || !selected || !user) return
+    setPostingTxComment(true)
+    const res = await fetch('/api/signals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: `[tx:${selected.id}] ${txComment}`, worldId: 'forge', mood: 'energized' }),
+    })
+    const data = await res.json()
+    if (data.signal) {
+      setTxComments(prev => [data.signal, ...prev])
+      setTxComment('')
+    }
+    setPostingTxComment(false)
   }
 
   const sendTip = async (context: string) => {
@@ -266,6 +289,31 @@ export default function ForgePage() {
                     {tipSent && <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', color: '#BA7517', textAlign: 'center', padding: '0.5rem', animation: 'fadeIn 0.3s ease' }}>✦ Tip sent with meaning</div>}
                   </div>
                 )}
+                {/* Live chat / comments */}
+                <div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.56rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: '0.75rem' }}>
+                    Comments {txComments.length > 0 && `(${txComments.length})`}
+                  </div>
+                  {user && (
+                    <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.75rem' }}>
+                      <input value={txComment} onChange={e => setTxComment(e.target.value)} onKeyDown={e => e.key === 'Enter' && postTxComment()} placeholder="React to this transmission..." style={{ flex: 1, background: 'transparent', border: '0.5px solid var(--border-bright)', borderRadius: '2px', outline: 'none', padding: '0.5rem 0.75rem', fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text)' }} />
+                      <button onClick={postTxComment} disabled={postingTxComment || !txComment.trim()} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.58rem', padding: '0.5rem 0.85rem', background: 'rgba(186,117,23,0.15)', border: '0.5px solid rgba(186,117,23,0.3)', color: '#BA7517', borderRadius: '2px', cursor: 'none', flexShrink: 0 }}>Post</button>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: 240, overflowY: 'auto' }}>
+                    {txComments.length === 0 ? (
+                      <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--text-dim)' }}>No comments yet.</p>
+                    ) : txComments.map((cm: any) => (
+                      <div key={cm.id} style={{ display: 'flex', gap: '0.5rem', padding: '0.5rem 0', borderBottom: '0.5px solid var(--border)' }}>
+                        <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', flexShrink: 0 }}>{cm.author?.avatarEmoji}</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', color: 'var(--aether)', marginRight: '0.4rem' }}>@{cm.author?.username}</span>
+                          <span style={{ fontFamily: 'var(--font-display)', fontSize: '0.9rem', color: 'var(--text-muted)' }}>{cm.content.replace(`[tx:${selected?.id}] `, '')}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </>
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200 }}>

@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
 import SectionLabel from '@/components/ui/SectionLabel'
+import WeeklyChallenge from '@/components/ui/WeeklyChallenge'
 import { useAuth } from '@/context/AuthContext'
 
 export default function ArenaPage() {
@@ -85,6 +86,21 @@ export default function ArenaPage() {
     setPosting(false)
   }
 
+  const upvoteArg = async (argId: string) => {
+    if (!selected) return
+    const res = await fetch(`/api/debate/${selected.id}?argumentId=${argId}`, { method: 'PUT' })
+    const data = await res.json()
+    if (res.ok) {
+      setSelected((prev: any) => ({
+        ...prev,
+        arguments: prev.arguments.map((a: any) => a.id === argId
+          ? { ...a, upvotes: data.upvoted ? (a.upvotes || 0) + 1 : Math.max(0, (a.upvotes || 0) - 1), argVotes: data.upvoted ? [...(a.argVotes || []), { userId: 'me' }] : (a.argVotes || []).filter((v: any) => v.userId !== 'me') }
+          : a
+        )
+      }))
+    }
+  }
+
   const vote = async (side: 'for' | 'against') => {
     if (!selected) return
     await fetch(`/api/debate/${selected.id}`, {
@@ -146,6 +162,7 @@ export default function ArenaPage() {
           </div>
         )}
 
+        <div style={{ padding: '0 1.5rem 1rem' }}><WeeklyChallenge compact /></div>
         <div className="arena-layout">
           {/* Left: debate list */}
           <div className="arena-left">
@@ -234,7 +251,17 @@ export default function ArenaPage() {
                             <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.54rem', color: a.side === 'for' ? '#1D9E75' : '#D85A30', padding: '0.1rem 0.5rem', border: `0.5px solid ${a.side === 'for' ? '#1D9E7544' : '#D85A3044'}`, borderRadius: '99px' }}>{a.side}</span>
                             <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.54rem', color: 'var(--text-dim)', marginLeft: 'auto' }}>{new Date(a.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                           </div>
-                          <p style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', color: 'var(--text)', lineHeight: 1.5 }}>{a.content}</p>
+                          <p style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', color: 'var(--text)', lineHeight: 1.5, marginBottom: '0.6rem' }}>{a.content}</p>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            {user && user.id !== a.author?.id && (
+                              <button onClick={() => upvoteArg(a.id)} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontFamily: 'var(--font-mono)', fontSize: '0.56rem', letterSpacing: '0.06em', padding: '0.25rem 0.65rem', background: (a.argVotes || []).some((v: any) => v.userId === user?.id) ? 'rgba(168,155,255,0.15)' : 'transparent', border: `0.5px solid ${(a.argVotes || []).some((v: any) => v.userId === user?.id) ? 'var(--aether)' : 'var(--border)'}`, color: (a.argVotes || []).some((v: any) => v.userId === user?.id) ? 'var(--aether)' : 'var(--text-dim)', borderRadius: '99px', cursor: 'none', transition: 'all 0.15s' }}>
+                                ↑ {a.upvotes || 0}
+                              </button>
+                            )}
+                            {(!user || user.id === a.author?.id) && (a.upvotes || 0) > 0 && (
+                              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.56rem', color: 'var(--text-dim)' }}>↑ {a.upvotes || 0}</span>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>

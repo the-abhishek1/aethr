@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 
 export default function SignInForm() {
-  const [email, setEmail] = useState('')
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -15,10 +15,10 @@ export default function SignInForm() {
   const from = params.get('from') || '/dashboard'
 
   const handleSubmit = async () => {
-    if (!email || !password) { setError('Both fields required'); return }
+    if (!identifier || !password) { setError('Both fields required'); return }
     setLoading(true); setError('')
     try {
-      const res = await fetch('/api/auth/signin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) })
+      const res = await fetch('/api/auth/signin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: identifier, password }) })
       const data = await res.json()
       if (!res.ok) { setError(data.error); return }
       await refresh()
@@ -37,8 +37,14 @@ export default function SignInForm() {
           <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.62rem', letterSpacing:'0.25em', textTransform:'uppercase', color:'var(--aether)', marginBottom:'1rem', textAlign:'center' }}>Return to the galaxy</p>
           <h1 style={{ fontFamily:'var(--font-display)', fontSize:'clamp(2rem,6vw,3rem)', fontWeight:300, lineHeight:1.1, textAlign:'center', marginBottom:'2.5rem' }}>Enter<br /><em style={{color:'var(--aether)'}}>the Æther.</em></h1>
           <div style={{ display:'flex', flexDirection:'column', gap:'0.75rem', marginBottom:'1.5rem' }}>
-            <input className="auth-input" type="email" placeholder="your@signal.here" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleSubmit()} />
+            <input className="auth-input" type="text" placeholder="email or @username" value={identifier} onChange={e=>setIdentifier(e.target.value)} autoComplete="username" onKeyDown={e=>e.key==='Enter'&&handleSubmit()} />
             <input className="auth-input" type="password" placeholder="Your passphrase" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleSubmit()} />
+          </div>
+          <div style={{ textAlign:'right', marginBottom:'0.25rem', marginTop:'-0.25rem' }}>
+            <Link href="/forgot-password" style={{ fontFamily:'var(--font-mono)', fontSize:'0.58rem', color:'var(--text-dim)', textDecoration:'none', transition:'color 0.15s' }}
+              onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = 'var(--aether)'}
+              onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'var(--text-dim)'}
+            >Forgot password?</Link>
           </div>
           {error && <div style={{ fontFamily:'var(--font-mono)', fontSize:'0.65rem', color:'#D85A30', marginBottom:'1rem', padding:'0.6rem 1rem', border:'0.5px solid #D85A3044', borderRadius:'2px' }}>{error}</div>}
           <button onClick={handleSubmit} disabled={loading} style={{ width:'100%', fontFamily:'var(--font-mono)', fontSize:'0.72rem', letterSpacing:'0.15em', textTransform:'uppercase', padding:'0.95rem', background:loading?'var(--aether-dim)':'var(--aether)', color:loading?'var(--aether)':'var(--void)', border:loading?'0.5px solid var(--aether)':'none', borderRadius:'2px', cursor:'none', transition:'all 0.2s' }}>{loading?'Entering...':'Enter Aethr →'}</button>

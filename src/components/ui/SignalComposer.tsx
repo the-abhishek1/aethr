@@ -1,5 +1,5 @@
 'use client'
-import { useState, useRef } from 'react'
+import React, { useState, useRef, useCallback } from 'react'
 import { useAuth } from '@/context/AuthContext'
 
 const MOODS = ['😂 funny','🔥 hot take','🌀 curious','💡 idea','😤 rant','❤️ wholesome','🤯 mindblown','😴 tired']
@@ -18,9 +18,45 @@ export default function SignalComposer({ worldId, onPosted }: Props) {
   const [posting, setPosting]   = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError]       = useState('')
+  const [mentionQuery, setMentionQuery]   = useState('')
+  const [mentionResults, setMentionResults] = useState<any[]>([])
+  const [mentionPos, setMentionPos]       = useState<number>(-1)
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   if (!user) return null
+
+  const handleContentChange = useCallback(async (val: string) => {
+    setContent(val)
+    // Check for @mention trigger
+    const cursor = textareaRef.current?.selectionStart || val.length
+    const beforeCursor = val.slice(0, cursor)
+    const mentionMatch = beforeCursor.match(/@([a-zA-Z0-9_]*)$/)
+    if (mentionMatch) {
+      const query = mentionMatch[1]
+      setMentionQuery(query)
+      if (query.length >= 1) {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&type=users`).then(r => r.json())
+        setMentionResults(res.results?.users?.slice(0, 5) || [])
+      } else {
+        setMentionResults([])
+      }
+    } else {
+      setMentionQuery('')
+      setMentionResults([])
+    }
+  }, [])
+
+  const insertMention = (username: string) => {
+    const cursor = textareaRef.current?.selectionStart || content.length
+    const beforeCursor = content.slice(0, cursor)
+    const afterCursor = content.slice(cursor)
+    const newBefore = beforeCursor.replace(/@([a-zA-Z0-9_]*)$/, `@${username} `)
+    setContent(newBefore + afterCursor)
+    setMentionResults([])
+    setMentionQuery('')
+    textareaRef.current?.focus()
+  }
 
   const post = async () => {
     if (!content.trim()) { setError('Write something first'); return }
@@ -92,9 +128,27 @@ export default function SignalComposer({ worldId, onPosted }: Props) {
     <div style={{ border: '0.5px solid var(--border-bright)', borderRadius: '2px', padding: '1.1rem', background: 'var(--deep)', animation: 'fadeUp 0.2s ease' }}>
       <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.75rem' }}>
         <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--surface)', border: '0.5px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', flexShrink: 0, marginTop: 3 }}>{user.avatarEmoji}</div>
-        <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="What's your signal? Funny, deep, hot take, image, video — anything goes." rows={3} autoFocus maxLength={500}
+        <div style={{ position: 'relative', flex: 1 }}>
+        <textarea ref={textareaRef} value={content} onChange={e => handleContentChange(e.target.value)} placeholder="What's your signal? Funny, deep, hot take, image, video — anything goes." rows={3} autoFocus maxLength={500}
           onKeyDown={e => { if (e.key === 'Enter' && e.metaKey) post() }}
-          style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontFamily: 'var(--font-display)', fontSize: '1rem', color: 'var(--text)', resize: 'none', lineHeight: 1.6 }} />
+          style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', fontFamily: 'var(--font-display)', fontSize: '1rem', color: 'var(--text)', resize: 'none', lineHeight: 1.6 }} />
+        {mentionResults.length > 0 && (
+          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, background: 'var(--deep)', border: '0.5px solid var(--border-bright)', borderRadius: '2px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden' }}>
+            {mentionResults.map((u: any) => (
+              <div key={u.id} onClick={() => insertMention(u.username)} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 1rem', cursor: 'none', transition: 'background 0.15s' }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--mid)'}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+              >
+                <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', flexShrink: 0 }}>{u.avatarEmoji}</div>
+                <div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '0.9rem', color: 'var(--text)' }}>@{u.username}</div>
+                  {u.bio && <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.54rem', color: 'var(--text-dim)' }}>{u.bio.slice(0, 40)}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        </div>
       </div>
 
       {/* Media preview */}

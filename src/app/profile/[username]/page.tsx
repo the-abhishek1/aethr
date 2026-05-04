@@ -98,7 +98,7 @@ export default function PublicProfilePage() {
   const startMessage = () => {
     if (!me) { router.push('/signin'); return }
     setMessaging(true)
-    router.push(`/messages?to=${profile.id}`)
+    router.push(`/messages?username=${profile.username}`)
   }
 
   if (loading) return (

@@ -105,17 +105,21 @@ function SearchContent() {
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.58rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: '0.75rem' }}>Signals</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', background: 'var(--border)', border: '0.5px solid var(--border)' }}>
                   {results.signals.map((s: any) => (
-                    <div key={s.id} style={{ padding: '0.9rem 1.1rem', background: 'var(--void)', transition: 'background 0.15s' }}
+                    <Link key={s.id} href={`/signals/${s.id}`} style={{ display: 'block', padding: '0.9rem 1.1rem', background: 'var(--void)', textDecoration: 'none', transition: 'background 0.15s' }}
                       onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--deep)'}
                       onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'var(--void)'}
                     >
                       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.3rem', flexWrap: 'wrap' }}>
                         <span style={{ fontSize: '0.85rem' }}>{s.author?.avatarEmoji}</span>
                         <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.58rem', color: 'var(--aether)' }}>@{s.author?.username}</span>
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', color: 'var(--text-dim)' }}>{s.worldId}</span>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', color: 'var(--text-dim)', textTransform: 'capitalize' }}>{s.worldId}</span>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.52rem', color: 'var(--text-dim)', marginLeft: 'auto' }}>{new Date(s.createdAt).toLocaleDateString()}</span>
                       </div>
-                      <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.95rem', color: 'var(--text)', lineHeight: 1.4 }}>{s.content}</p>
-                    </div>
+                      <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.95rem', color: 'var(--text)', lineHeight: 1.4, marginBottom: s.mediaUrl ? '0.5rem' : 0 }}>{s.content}</p>
+                      {s.mediaUrl?.match(/\.(jpg|jpeg|png|gif|webp)(\?|$)/i) && (
+                        <img src={s.mediaUrl} alt="" style={{ width: '100%', maxHeight: 200, objectFit: 'cover', borderRadius: '2px', display: 'block' }} loading="lazy" />
+                      )}
+                    </Link>
                   ))}
                 </div>
               </div>
@@ -148,7 +152,7 @@ function SearchContent() {
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.58rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: '0.75rem' }}>Factions</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', background: 'var(--border)', border: '0.5px solid var(--border)' }}>
                   {results.factions.map((f: any) => (
-                    <Link key={f.id} href="/factions" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.9rem 1.1rem', background: 'var(--void)', textDecoration: 'none', transition: 'background 0.15s' }}
+                    <Link key={f.id} href={`/factions/${f.id}`} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.9rem 1.1rem', background: 'var(--void)', textDecoration: 'none', transition: 'background 0.15s' }}
                       onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--deep)'}
                       onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'var(--void)'}
                     >

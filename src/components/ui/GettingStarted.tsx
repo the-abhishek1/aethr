@@ -27,15 +27,13 @@ export default function GettingStarted() {
 
     // Check what the user has done
     Promise.all([
-      fetch('/api/signals?limit=1').then(r => r.json()),
       fetch('/api/profile').then(r => r.json()),
-      fetch('/api/factions').then(r => r.json()),
-      fetch('/api/discoveries?limit=1').then(r => r.json()),
-    ]).then(([sigData, profData, facData, discData]) => {
-      const hasSignal = sigData.signals?.length > 0
-      const hasBio = !!profData.user?.bio
-      const hasFaction = profData.user?.factionMembers?.length > 0 || facData.factions?.some((f: any) => f.members?.some((m: any) => m.userId === user.id))
-      const hasDiscovery = discData.discoveries?.some((d: any) => d.authorId === user.id)
+    ]).then(([profData]) => {
+      const u = profData.user
+      const hasSignal    = (u?._count?.signals   || 0) > 0
+      const hasBio       = !!u?.bio
+      const hasFaction   = (u?.factionMembers?.length || 0) > 0
+      const hasDiscovery = (u?._count?.discoveries || 0) > 0
 
       setTasks([
         { id: 'signal',    label: 'Drop your first signal',    desc: 'Share something in The Commons', href: '/commons',   cta: 'Go to Commons →',   done: hasSignal },

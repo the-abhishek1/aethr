@@ -10,7 +10,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     where: { parentId: id },
     orderBy: { createdAt: 'asc' },
     include: {
-      author: { select: { id: true, username: true, avatarEmoji: true } },
+      author:    { select: { id: true, username: true, avatarEmoji: true } },
+      _count:    { select: { replies: true, reactions: true } },
+      reactions: { select: { emoji: true, userId: true } },
     }
   })
 
@@ -58,5 +60,65 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     })
   }
 
+  // Detect @mentions in reply
+  const mentionRegex = /@([a-zA-Z0-9_]+)/g
+  const mentions = [...content.matchAll(mentionRegex)].map(m => m[1])
+  if (mentions.length > 0) {
+    const mentionedUsers = await prisma.user.findMany({
+      where: { username: { in: mentions, mode: 'insensitive' } },
+      select: { id: true }
+    })
+    for (const mentioned of mentionedUsers) {
+      if (mentioned.id === session.id || mentioned.id === parent.authorId) continue
+      await prisma.notification.create({
+        data: {
+          userId: mentioned.id,
+          type: 'mention',
+          title: `@${session.username} mentioned you in a reply`,
+          body: content.slice(0, 80),
+          link: `/signals/${id}`,
+        }
+      }).catch(() => {})
+    }
+  }
+
   return NextResponse.json({ reply })
+}
+
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const session = await getSession()
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { content } = await (req as any).json()
+  if (!content?.trim()) return NextResponse.json({ error: 'Content required' }, { status: 400 })
+
+  const signal = await prisma.signal.findUnique({ where: { id }, select: { authorId: true } })
+  if (!signal) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (signal.authorId !== session.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  const updated = await prisma.signal.update({
+    where: { id },
+    data: { content: content.trim() },
+    include: {
+      author:    { select: { id: true, username: true, avatarEmoji: true } },
+      _count:    { select: { replies: true, reactions: true } },
+      reactions: { select: { emoji: true, userId: true } },
+    }
+  })
+
+  return NextResponse.json({ signal: updated })
+}
+
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const session = await getSession()
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const signal = await prisma.signal.findUnique({ where: { id }, select: { authorId: true } })
+  if (!signal) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (signal.authorId !== session.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  await prisma.signal.delete({ where: { id } })
+  return NextResponse.json({ deleted: true })
 }

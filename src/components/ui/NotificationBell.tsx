@@ -20,6 +20,7 @@ const TYPE_ICON: Record<string, string> = {
   debate_vote:       '⚔️',
   faction_invite:    '🏴',
   milestone:         '🏛️',
+  mention:           '@',
 }
 
 export default function NotificationBell() {

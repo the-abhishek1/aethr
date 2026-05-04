@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import SectionLabel from '@/components/ui/SectionLabel'
+import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
 
 const TAGS = ['philosophy', 'science', 'technology', 'art', 'culture', 'existence', 'society', 'nature']
@@ -14,6 +15,10 @@ export default function TheDeepPage() {
   const [form, setForm] = useState({ title: '', content: '', tags: [] as string[], mediaUrl: '' })
   const [posting, setPosting] = useState(false)
   const [rippling, setRippling] = useState<string | null>(null)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [comments, setComments] = useState<Record<string, any[]>>({})
+  const [commentText, setCommentText] = useState<Record<string, string>>({})
+  const [postingComment, setPostingComment] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     const url = `/api/discoveries${activeTag ? `?tag=${activeTag}` : ''}`
@@ -50,6 +55,40 @@ export default function TheDeepPage() {
       setDiscoveries(prev => prev.map(d => d.id === id ? { ...d, ripples: data.discovery.ripples } : d))
     }
     setRippling(null)
+  }
+
+  const loadComments = async (discoveryId: string) => {
+    if (expandedId === discoveryId) { setExpandedId(null); return }
+    setExpandedId(discoveryId)
+    if (!comments[discoveryId]) {
+      const res = await fetch(`/api/signals?worldId=the-deep&limit=20`)
+      const data = await res.json()
+      // Filter signals that mention this discovery ID in their content or are linked to it
+      setComments(prev => ({
+        ...prev,
+        [discoveryId]: (data.signals || []).filter((s: any) => s.content.includes(discoveryId)).slice(0, 10)
+      }))
+    }
+  }
+
+  const postComment = async (discoveryId: string) => {
+    const text = commentText[discoveryId]?.trim()
+    if (!text) return
+    setPostingComment(discoveryId)
+    const res = await fetch('/api/signals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: `[discovery:${discoveryId}] ${text}`, worldId: 'the-deep', mood: 'curious' }),
+    })
+    const data = await res.json()
+    if (data.signal) {
+      setComments(prev => ({
+        ...prev,
+        [discoveryId]: [data.signal, ...(prev[discoveryId] || [])]
+      }))
+      setCommentText(prev => ({ ...prev, [discoveryId]: '' }))
+    }
+    setPostingComment(null)
   }
 
   const toggleTag = (tag: string) => {
@@ -156,7 +195,7 @@ export default function TheDeepPage() {
                       </div>
                     </div>
 
-                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.1rem,2.5vw,1.4rem)', fontWeight: 400, color: 'var(--text)', marginBottom: '0.75rem', lineHeight: 1.3 }}>{d.title}</h3>
+                    <Link href={`/discoveries/${d.id}`} style={{ textDecoration: 'none' }}><h3 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.1rem,2.5vw,1.4rem)', fontWeight: 400, color: 'var(--text)', marginBottom: '0.75rem', lineHeight: 1.3, transition: 'color 0.15s' }} onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#378ADD'} onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'var(--text)'}>{d.title}</h3></Link>
                     {d.mediaUrl && d.mediaUrl.match(/\.(jpg|jpeg|png|gif|webp)(\?|$)/i) && (
                       <div style={{ marginBottom: '1rem', borderRadius: '4px', overflow: 'hidden', border: '0.5px solid var(--border)' }}>
                         <img src={d.mediaUrl} alt={d.title} style={{ width: '100%', maxHeight: 320, objectFit: 'cover', display: 'block' }} loading="lazy" />
@@ -173,7 +212,7 @@ export default function TheDeepPage() {
                       </div>
                     )}
 
-                    {/* Ripple button */}
+                    {/* Ripple + comment buttons */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                       {user && user.id !== d.authorId && (
                         <button onClick={() => ripple(d.id)} disabled={rippling === d.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0.4rem 1rem', background: 'rgba(55,138,221,0.1)', border: '0.5px solid rgba(55,138,221,0.3)', color: '#378ADD', borderRadius: '2px', cursor: 'none', transition: 'all 0.2s' }}
@@ -184,7 +223,38 @@ export default function TheDeepPage() {
                         </button>
                       )}
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#378ADD' }}>{d.ripples} ripples</span>
+                      <button onClick={() => loadComments(d.id)} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: expandedId === d.id ? 'var(--aether)' : 'var(--text-dim)', background: 'none', border: 'none', cursor: 'none', padding: 0, marginLeft: 'auto' }}>
+                        {expandedId === d.id ? '↑ Hide discussion' : '↓ Discuss'}
+                      </button>
                     </div>
+
+                    {/* Inline comments */}
+                    {expandedId === d.id && (
+                      <div style={{ marginTop: '1rem', borderTop: '0.5px solid var(--border)', paddingTop: '1rem' }}>
+                        {/* Comment input */}
+                        {user && (
+                          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                            <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--surface)', border: '0.5px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', flexShrink: 0 }}>{user.avatarEmoji}</div>
+                            <div style={{ flex: 1, display: 'flex', gap: '0.4rem' }}>
+                              <input value={commentText[d.id] || ''} onChange={e => setCommentText(prev => ({...prev, [d.id]: e.target.value}))} onKeyDown={e => e.key === 'Enter' && postComment(d.id)} placeholder="What does this make you think..." style={{ flex: 1, background: 'transparent', border: '0.5px solid var(--border-bright)', borderRadius: '2px', outline: 'none', padding: '0.45rem 0.75rem', fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text)' }} />
+                              <button onClick={() => postComment(d.id)} disabled={postingComment === d.id || !commentText[d.id]?.trim()} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.58rem', padding: '0.45rem 0.9rem', background: 'rgba(55,138,221,0.15)', border: '0.5px solid rgba(55,138,221,0.3)', color: '#378ADD', borderRadius: '2px', cursor: 'none', flexShrink: 0 }}>Post</button>
+                            </div>
+                          </div>
+                        )}
+                        {/* Comments list */}
+                        {(comments[d.id] || []).length === 0 ? (
+                          <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--text-dim)' }}>No discussion yet. Start one.</p>
+                        ) : (comments[d.id] || []).map((c: any) => (
+                          <div key={c.id} style={{ display: 'flex', gap: '0.6rem', padding: '0.5rem 0', borderBottom: '0.5px solid var(--border)' }}>
+                            <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', flexShrink: 0 }}>{c.author?.avatarEmoji}</div>
+                            <div>
+                              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.56rem', color: 'var(--aether)', marginRight: '0.5rem' }}>@{c.author?.username}</span>
+                              <span style={{ fontFamily: 'var(--font-display)', fontSize: '0.85rem', color: 'var(--text-muted)' }}>{c.content.replace(`[discovery:${d.id}] `, '')}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
